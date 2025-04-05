@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apprends la Grammaire Française</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 800px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        h1 {
+            color: #ff6b6b;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .instructions {
+            background-color: #fffacd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .sentence-container {
+            background-color: #e6f7ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+            line-height: 2;
+        }
+        .word {
+            display: inline-block;
+            margin: 0 5px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .word:hover {
+            transform: scale(1.1);
+            color: #4a90e2;
+        }
+        .selected {
+            font-weight: bold;
+            border-bottom: 2px dashed #ff6b6b;
+        }
+        .word-selected {
+            background-color: #ffeb3b;
+            border-radius: 5px;
+            padding: 2px 5px;
+        }
+        .dropdown {
+            display: none;
+            position: absolute;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            padding: 10px;
+            z-index: 10;
+            width: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .dropdown button {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: #f1f1f1;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .dropdown button:hover {
+            background-color: #ddd;
+        }
+        .dropdown button:last-child {
+            margin-bottom: 0;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        button.action-btn {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button.action-btn:hover {
+            background-color: #45a049;
+        }
+        button.action-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 20px;
+        }
+        .correct {
+            color: #4caf50;
+        }
+        .incorrect {
+            color: #f44336;
+        }
+        .score-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .score-box {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 10px;
+            width: 45%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 20px;
+            border-radius: 10px;
+            background-color: #4caf50;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        .star {
+            font-size: 30px;
+            color: #ffd700;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .celebration {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .celebration-content {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Apprends la Grammaire Française</h1>
+        
+        <div class="instructions">
+            <p>Clique sur les mots de la phrase et choisis s'il s'agit d'un <strong>nom</strong>, d'un <strong>verbe</strong>, d'un <strong>adjectif</strong> ou d'un <strong>déterminant</strong>. Ensuite, vérifie tes réponses !</p>
+        </div>
+        
+        <div class="sentence-container" id="sentence">
+            <!-- Sentence will be generated here -->
+        </div>
+        
+        <div class="button-container">
+            <button id="check-btn" class="action-btn" disabled>Vérifier</button>
+            <button id="next-btn" class="action-btn" disabled>Phrase Suivante</button>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="score-container">
+            <div class="score-box">
+                <h3>Score: <span id="score">0</span></h3>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+            </div>
+            <div class="score-box">
+                <h3>Étoiles: <span id="stars"></span></h3>
+            </div>
+        </div>
+    </div>
+    
+    <div class="celebration" id="celebration">
+        <div class="celebration-content">
+            <h2>Bravo !</h2>
+            <p>Tu as gagné une étoile !</p>
+            <div class="star">⭐</div>
+            <button class="action-btn" onclick="hideCelebration()">Continuer</button>
+        </div>
+    </div>
+
+    <script>
+        // Data for sentence generation with grammatical agreement
+        const data = {
+            determinants: [
+                { word: "le", type: "déterminant", gender: "m", number: "s" },
+                { word: "la", type: "déterminant", gender: "f", number: "s" },
+                { word: "les", type: "déterminant", gender: "b", number: "p" },
+                { word: "un", type: "déterminant", gender: "m", number: "s" },
+                { word: "une", type: "déterminant", gender: "f", number: "s" },
+                { word: "des", type: "déterminant", gender: "b", number: "p" },
+                { word: "mon", type: "déterminant", gender: "m", number: "s" },
+                { word: "ma", type: "déterminant", gender: "f", number: "s" },
+                { word: "mes", type: "déterminant", gender: "b", number: "p" },
+                { word: "ce", type: "déterminant", gender: "m", number: "s" },
+                { word: "cette", type: "déterminant", gender: "f", number: "s" },
+                { word: "ces", type: "déterminant", gender: "b", number: "p" }
+            ],
+            nouns: [
+                { word: "chat", type: "nom", gender: "m", number: "s" },
+                { word: "chien", type: "nom", gender: "m", number: "s" },
+                { word: "maison", type: "nom", gender: "f", number: "s" },
+                { word: "école", type: "nom", gender: "f", number: "s" },
+                { word: "livre", type: "nom", gender: "m", number: "s" },
+                { word: "ami", type: "nom", gender: "m", number: "s" },
+                { word: "amie", type: "nom", gender: "f", number: "s" },
+                { word: "arbre", type: "nom", gender: "m", number: "s" },
+                { word: "fleur", type: "nom", gender: "f", number: "s" },
+                { word: "ballon", type: "nom", gender: "m", number: "s" },
+                { word: "jouet", type: "nom", gender: "m", number: "s" },
+                { word: "jardin", type: "nom", gender: "m", number: "s" },
+                { word: "pomme", type: "nom", gender: "f", number: "s" },
+                { word: "banane", type: "nom", gender: "f", number: "s" },
+                { word: "gâteau", type: "nom", gender: "m", number: "s" },
+                { word: "enfant", type: "nom", gender: "m", number: "s" },
+                { word: "parent", type: "nom", gender: "m", number: "s" },
+                { word: "crayon", type: "nom", gender: "m", number: "s" },
+                { word: "cahier", type: "nom", gender: "m", number: "s" },
+                { word: "table", type: "nom", gender: "f", number: "s" },
+                { word: "chats", type: "nom", gender: "m", number: "p" },
+                { word: "chiens", type: "nom", gender: "m", number: "p" },
+                { word: "maisons", type: "nom", gender: "f", number: "p" },
+                { word: "écoles", type: "nom", gender: "f", number: "p" },
+                { word: "livres", type: "nom", gender: "m", number: "p" },
+                { word: "amis", type: "nom", gender: "m", number: "p" },
+                { word: "amies", type: "nom", gender: "f", number: "p" },
+                { word: "arbres", type: "nom", gender: "m", number: "p" },
+                { word: "fleurs", type: "nom", gender: "f", number: "p" },
+                { word: "ballons", type: "nom", gender: "m", number: "p" }
+            ],
+            adjectives: [
+                { word: "petit", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "petit", p: "petits"}, f: {s: "petite", p: "petites"}} },
+                { word: "grand", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "grand", p: "grands"}, f: {s: "grande", p: "grandes"}} },
+                { word: "beau", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "beau", p: "beaux"}, f: {s: "belle", p: "belles"}} },
+                { word: "joli", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "joli", p: "jolis"}, f: {s: "jolie", p: "jolies"}} },
+                { word: "rouge", type: "adjectif", gender: "b", number: "s", forms: {m: {s: "rouge", p: "rouges"}, f: {s: "rouge", p: "rouges"}} },
+                { word: "bleu", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "bleu", p: "bleus"}, f: {s: "bleue", p: "bleues"}} },
+                { word: "vert", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "vert", p: "verts"}, f: {s: "verte", p: "vertes"}} },
+                { word: "jaune", type: "adjectif", gender: "b", number: "s", forms: {m: {s: "jaune", p: "jaunes"}, f: {s: "jaune", p: "jaunes"}} },
+                { word: "content", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "content", p: "contents"}, f: {s: "contente", p: "contentes"}} },
+                { word: "gentil", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "gentil", p: "gentils"}, f: {s: "gentille", p: "gentilles"}} },
+                { word: "long", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "long", p: "longs"}, f: {s: "longue", p: "longues"}} },
+                { word: "délicieux", type: "adjectif", gender: "m", number: "s", forms: {m: {s: "délicieux", p: "délicieux"}, f: {s: "délicieuse", p: "délicieuses"}} }
+            ],
+            verbs: [
+                { 
+                    word: "manger", type: "verbe", 
+                    conjugations: {
+                        s: "mange", 
+                        p: "mangent"
+                    }
+                },
+                { 
+                    word: "jouer", type: "verbe", 
+                    conjugations: {
+                        s: "joue", 
+                        p: "jouent"
+                    }
+                },
+                { 
+                    word: "courir", type: "verbe", 
+                    conjugations: {
+                        s: "court", 
+                        p: "courent"
+                    }
+                },
+                { 
+                    word: "sauter", type: "verbe", 
+                    conjugations: {
+                        s: "saute", 
+                        p: "sautent"
+                    }
+                },
+                { 
+                    word: "dessiner", type: "verbe", 
+                    conjugations: {
+                        s: "dessine", 
+                        p: "dessinent"
+                    }
+                },
+                { 
+                    word: "lire", type: "verbe", 
+                    conjugations: {
+                        s: "lit", 
+                        p: "lisent"
+                    }
+                },
+                { 
+                    word: "écrire", type: "verbe", 
+                    conjugations: {
+                        s: "écrit", 
+                        p: "écrivent"
+                    }
+                },
+                { 
+                    word: "regarder", type: "verbe", 
+                    conjugations: {
+                        s: "regarde", 
+                        p: "regardent"
+                    }
+                },
+                { 
+                    word: "aimer", type: "verbe", 
+                    conjugations: {
+                        s: "aime", 
+                        p: "aiment"
+                    }
+                },
+                { 
+                    word: "prendre", type: "verbe", 
+                    conjugations: {
+                        s: "prend", 
+                        p: "prennent"
+                    }
+                },
+                { 
+                    word: "donner", type: "verbe", 
+                    conjugations: {
+                        s: "donne", 
+                        p: "donnent"
+                    }
+                },
+                { 
+                    word: "trouver", type: "verbe", 
+                    conjugations: {
+                        s: "trouve", 
+                        p: "trouvent"
+                    }
+                }
+            ]
+        };
+
+        // Sentence patterns
+        const sentencePatterns = [
+            // Simple patterns
+            ["determinants", "nouns", "verbs"],
+            ["determinants", "adjectives", "nouns", "verbs"],
+            ["determinants", "nouns", "verbs", "determinants", "nouns"],
+            ["determinants", "nouns", "verbs", "determinants", "adjectives", "nouns"],
+            ["determinants", "adjectives", "nouns", "verbs", "determinants", "nouns"],
+            ["determinants", "adjectives", "nouns", "verbs", "determinants", "adjectives", "nouns"],
+            // More complex patterns
+            ["determinants", "nouns", "verbs", "avec", "determinants", "nouns"],
+            ["determinants", "nouns", "verbs", "dans", "determinants", "nouns"],
+            ["determinants", "nouns", "verbs", "sur", "determinants", "nouns"],
+            ["determinants", "nouns", "verbs", "sous", "determinants", "nouns"]
+        ];
+
+        // Current sentence data
+        let currentSentence = [];
+        let selectedWord = null;
+        let userAnswers = {};
+        let score = 0;
+        let stars = 0;
+        let totalQuestions = 0;
+
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', function() {
+            generateSentence();
+            updateScore();
+        });
+
+        // Generate a random sentence with grammatical agreement
+        function generateSentence() {
+            const sentenceContainer = document.getElementById('sentence');
+            sentenceContainer.innerHTML = '';
+            userAnswers = {};
+            
+            // Select a random pattern
+            const pattern = sentencePatterns[Math.floor(Math.random() * sentencePatterns.length)];
+            currentSentence = [];
+            
+            // State to track for grammatical agreement
+            let currentNounGender = null;
+            let currentNounNumber = null;
+            let currentSubjectNumber = null;
+            
+            // Generate words according to the pattern with grammatical agreement
+            for (let i = 0; i < pattern.length; i++) {
+                const type = pattern[i];
+                
+                if (type === "avec" || type === "dans" || type === "sur" || type === "sous") {
+                    // These are prepositions, not word types
+                    currentSentence.push({ word: type, type: "préposition" });
+                } else if (type === "determinants") {
+                    // If this is part of a noun phrase, filter determinants by gender and number
+                    let determinantsList = [...data.determinants];
+                    
+                    // Check if we're following a preposition (new noun phrase)
+                    if (i > 0 && ["avec", "dans", "sur", "sous"].includes(pattern[i-1])) {
+                        // Reset for a new noun phrase
+                        currentNounGender = null;
+                        currentNounNumber = null;
+                    }
+                    
+                    // If we need to match a noun's gender and number, filter the list
+                    if (currentNounGender !== null && currentNounNumber !== null) {
+                        determinantsList = determinantsList.filter(det => 
+                            (det.gender === currentNounGender || det.gender === "b") && 
+                            det.number === currentNounNumber
+                        );
+                    } else if (pattern[i+1] === "nouns") {
+                        // If the next word is a noun, we'll just pick a determinant and then match the noun to it
+                        const randomDet = determinantsList[Math.floor(Math.random() * determinantsList.length)];
+                        currentSentence.push({ ...randomDet });
+                        
+                        // Set the gender and number for the upcoming noun
+                        if (randomDet.gender !== "b") {
+                            currentNounGender = randomDet.gender;
+                        }
+                        currentNounNumber = randomDet.number;
+                        
+                        // If this is the subject, track its number for verb agreement
+                        if (i === 0 || ["avec", "dans", "sur", "sous"].includes(pattern[i-1])) {
+                            currentSubjectNumber = randomDet.number;
+                        }
+                        
+                        continue;
+                    }
+                    
+                    // Choose a random determinant from the filtered list
+                    if (determinantsList.length > 0) {
+                        const randomDet = determinantsList[Math.floor(Math.random() * determinantsList.length)];
+                        currentSentence.push({ ...randomDet });
+                    } else {
+                        // Fallback if no matching determinant found
+                        const randomDet = data.determinants[Math.floor(Math.random() * data.determinants.length)];
+                        currentSentence.push({ ...randomDet });
+                    }
+                } else if (type === "nouns") {
+                    // If we have a gender/number constraint from the determinant, filter nouns
+                    let nounsList = [...data.nouns];
+                    
+                    if (currentNounGender !== null) {
+                        nounsList = nounsList.filter(noun => noun.gender === currentNounGender);
+                    }
+                    
+                    if (currentNounNumber !== null) {
+                        nounsList = nounsList.filter(noun => noun.number === currentNounNumber);
+                    }
+                    
+                    // Choose a random noun from the filtered list
+                    if (nounsList.length > 0) {
+                        const randomNoun = nounsList[Math.floor(Math.random() * nounsList.length)];
+                        currentSentence.push({ ...randomNoun });
+                        
+                        // Track the noun's properties for adjective agreement
+                        currentNounGender = randomNoun.gender;
+                        currentNounNumber = randomNoun.number;
+                        
+                        // If this is the first noun and it's the subject, set subject number for verb conjugation
+                        if ((i <= 2 && pattern.slice(0, i).includes("determinants")) || 
+                            (i > 0 && ["avec", "dans", "sur", "sous"].includes(pattern[i-2]) && pattern[i-1] === "determinants")) {
+                            currentSubjectNumber = randomNoun.number;
+                        }
+                    } else {
+                        // Fallback if no matching noun found
+                        const randomNoun = data.nouns[Math.floor(Math.random() * data.nouns.length)];
+                        currentSentence.push({ ...randomNoun });
+                        currentNounGender = randomNoun.gender;
+                        currentNounNumber = randomNoun.number;
+                    }
+                } else if (type === "adjectives") {
+                    // Filter adjectives that can agree with the current noun
+                    let adjectivesList = [...data.adjectives];
+                    
+                    if (currentNounGender !== null && currentNounNumber !== null) {
+                        // Find adjectives that have the right form
+                        const matchingAdjectives = adjectivesList.filter(adj => 
+                            adj.forms && 
+                            adj.forms[currentNounGender] && 
+                            adj.forms[currentNounGender][currentNounNumber]
+                        );
+                        
+                        if (matchingAdjectives.length > 0) {
+                            const randomAdj = matchingAdjectives[Math.floor(Math.random() * matchingAdjectives.length)];
+                            // Use the correct form based on noun agreement
+                            const adjForm = randomAdj.forms[currentNounGender][currentNounNumber];
+                            currentSentence.push({ 
+                                word: adjForm, 
+                                type: "adjectif", 
+                                gender: currentNounGender, 
+                                number: currentNounNumber 
+                            });
+                            continue;
+                        }
+                    }
+                    
+                    // Fallback if no matching adjective or no current noun
+                    const randomAdj = adjectivesList[Math.floor(Math.random() * adjectivesList.length)];
+                    currentSentence.push({ ...randomAdj });
+                } else if (type === "verbs") {
+                    // Conjugate the verb based on the subject number
+                    let verbsList = [...data.verbs];
+                    const randomVerb = verbsList[Math.floor(Math.random() * verbsList.length)];
+                    
+                    // Use the correct conjugation based on subject number
+                    const verbForm = currentSubjectNumber === "p" ? 
+                        randomVerb.conjugations.p : 
+                        randomVerb.conjugations.s;
+                    
+                    currentSentence.push({ 
+                        word: verbForm, 
+                        type: "verbe", 
+                        baseVerb: randomVerb.word 
+                    });
+                }
+            }
+            
+            // Add a period at the end
+            currentSentence.push({ word: ".", type: "ponctuation" });
+            
+            // Display the sentence
+            currentSentence.forEach((wordObj, index) => {
+                const wordElem = document.createElement('span');
+                
+                // Capitalize the first word of the sentence
+                if (index === 0) {
+                    wordElem.textContent = wordObj.word.charAt(0).toUpperCase() + wordObj.word.slice(1);
+                } else {
+                    wordElem.textContent = wordObj.word;
+                }
+                
+                wordElem.className = 'word';
+                wordElem.dataset.index = index;
+                
+                // Only make certain types of words selectable
+                if (['nom', 'verbe', 'adjectif', 'déterminant'].includes(wordObj.type)) {
+                    wordElem.onclick = function() {
+                        selectWord(index);
+                    };
+                }
+                
+                sentenceContainer.appendChild(wordElem);
+                
+                // Add a space after each word except before punctuation
+                if (index < currentSentence.length - 1 && currentSentence[index + 1].type !== "ponctuation") {
+                    sentenceContainer.appendChild(document.createTextNode(' '));
+                }
+            });
+            
+            // For debugging: log the sentence structure
+            console.log("Generated sentence:", currentSentence.map(w => w.word).join(' '));
+            
+            // Reset buttons
+            document.getElementById('check-btn').disabled = true;
+            document.getElementById('next-btn').disabled = true;
+            document.getElementById('result').textContent = '';
+        }
+
+        // Select a word and show the dropdown
+        function selectWord(index) {
+            // Remove any existing dropdowns first
+            const existingDropdowns = document.querySelectorAll('.dropdown');
+            existingDropdowns.forEach(dropdown => dropdown.remove());
+            
+            // Highlight the selected word
+            const words = document.querySelectorAll('.word');
+            words.forEach(word => word.classList.remove('selected'));
+            
+            const selectedElem = document.querySelector(`.word[data-index="${index}"]`);
+            selectedElem.classList.add('selected');
+            selectedWord = index;
+            
+            // Create the dropdown
+            const dropdown = document.createElement('div');
+            dropdown.className = 'dropdown';
+            
+            const options = ['nom', 'verbe', 'adjectif', 'déterminant'];
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option.charAt(0).toUpperCase() + option.slice(1);
+                button.onclick = function() {
+                    selectType(option);
+                };
+                dropdown.appendChild(button);
+            });
+            
+            // Position the dropdown under the word
+            selectedElem.appendChild(dropdown);
+            dropdown.style.display = 'block';
+            
+            // Close dropdown when clicking elsewhere
+            document.addEventListener('click', function closeDropdown(e) {
+                if (!dropdown.contains(e.target) && e.target !== selectedElem) {
+                    dropdown.remove();
+                    document.removeEventListener('click', closeDropdown);
+                }
+            });
+        }
+
+        // Select a type for the word
+        function selectType(type) {
+            if (selectedWord !== null) {
+                userAnswers[selectedWord] = type;
+                
+                // Update the word's appearance to show it's categorized
+                const selectedElem = document.querySelector(`.word[data-index="${selectedWord}"]`);
+                selectedElem.classList.add('word-selected');
+                
+                // Remove the dropdown
+                const dropdown = selectedElem.querySelector('.dropdown');
+                if (dropdown) {
+                    dropdown.remove();
+                }
+                
+                // Enable the check button if all selectable words have been categorized
+                const selectable = currentSentence.filter(word => 
+                    ['nom', 'verbe', 'adjectif', 'déterminant'].includes(word.type)
+                ).length;
+                
+                if (Object.keys(userAnswers).length === selectable) {
+                    document.getElementById('check-btn').disabled = false;
+                }
+            }
+        }
+
+        // Check the user's answers
+        document.getElementById('check-btn').addEventListener('click', function() {
+            let correct = 0;
+            const selectable = currentSentence.filter(word => 
+                ['nom', 'verbe', 'adjectif', 'déterminant'].includes(word.type)
+            );
+            
+            // Mark each word as correct or incorrect
+            for (const [index, userType] of Object.entries(userAnswers)) {
+                const correctType = currentSentence[index].type;
+                const wordElem = document.querySelector(`.word[data-index="${index}"]`);
+                
+                if (userType === correctType) {
+                    wordElem.style.color = '#4caf50'; // Green for correct
+                    correct++;
+                } else {
+                    wordElem.style.color = '#f44336'; // Red for incorrect
+                }
+            }
+            
+            // Show the result
+            const resultElem = document.getElementById('result');
+            const scorePercent = Math.round((correct / selectable.length) * 100);
+            
+            if (scorePercent === 100) {
+                resultElem.innerHTML = '<span class="correct">Parfait ! Toutes les réponses sont correctes !</span>';
+                score += 10;
+                if (score % 50 === 0) {
+                    stars++;
+                    showCelebration();
+                }
+            } else if (scorePercent >= 80) {
+                resultElem.innerHTML = `<span class="correct">Très bien ! ${correct} sur ${selectable.length} réponses correctes.</span>`;
+                score += 5;
+            } else if (scorePercent >= 50) {
+                resultElem.innerHTML = `<span>Pas mal ! ${correct} sur ${selectable.length} réponses correctes.</span>`;
+                score += 3;
+            } else {
+                resultElem.innerHTML = `<span class="incorrect">Continue d'essayer ! ${correct} sur ${selectable.length} réponses correctes.</span>`;
+                score += 1;
+            }
+            
+            totalQuestions++;
+            updateScore();
+            
+            // Enable the next button
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('check-btn').disabled = true;
+        });
+
+        // Generate the next sentence
+        document.getElementById('next-btn').addEventListener('click', function() {
+            generateSentence();
+        });
+
+        // Update the score display
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            const starsElem = document.getElementById('stars');
+            starsElem.textContent = '';
+            for (let i = 0; i < stars; i++) {
+                starsElem.textContent += '⭐';
+            }
+            
+            // Update progress bar based on score (max progress at 100 points)
+            const progressBar = document.getElementById('progress-bar');
+            const progress = Math.min((score / 100) * 100, 100);
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // Show celebration when earning a star
+        function showCelebration() {
+            const celebration = document.getElementById('celebration');
+            celebration.style.display = 'flex';
+            
+            // Create confetti effect
+            for (let i = 0; i < 50; i++) {
+                createConfetti();
+            }
+        }
+
+        // Hide celebration
+        function hideCelebration() {
+            const celebration = document.getElementById('celebration');
+            celebration.style.display = 'none';
+            
+            // Remove all confetti
+            const confetti = document.querySelectorAll('.confetti');
+            confetti.forEach(c => c.remove());
+        }
+
+        // Create a confetti piece
+        function createConfetti() {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            
+            // Random properties for confetti
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.top = -20 + 'px';
+            confetti.style.backgroundColor = randomColor();
+            confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+            
+            document.body.appendChild(confetti);
+            
+            // Animate confetti falling
+            const animation = confetti.animate(
+                [
+                    { transform: `translate(0, 0) rotate(${Math.random() * 360}deg)` },
+                    { transform: `translate(${Math.random() * 100 - 50}px, 100vh) rotate(${Math.random() * 360}deg)` }
+                ],
+                {
+                    duration: 3000 + Math.random() * 2000,
+                    easing: 'cubic-bezier(0, 1, 1, 1)'
+                }
+            );
+            
+            animation.onfinish = () => confetti.remove();
+        }
+
+        // Generate a random color
+        function randomColor() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#ff9900', '#9900ff'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+    </script>
+</body>
+</html>
