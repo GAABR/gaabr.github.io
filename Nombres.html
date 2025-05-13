@@ -96,7 +96,7 @@
     </style>
 </head>
 <body>
-    <h1>Random Number Generator</h1>
+    <h1>Quel est ce nombre ?</h1>
     
     <div class="display-area">
         <div class="number" id="numberDisplay">
@@ -106,18 +106,18 @@
     
     <div class="controls-container">
         <div class="select-container">
-            <label for="ruleSelector">Select Rule:</label>
+            <label for="ruleSelector"></label>
             <select id="ruleSelector" class="rule-selector">
-                <option value="1">Rule 1: Random 10-19</option>
-                <option value="2">Rule 2: Random from 10,20,30,40,50,60</option>
-                <option value="3">Rule 3: Random 10-69</option>
-                <option value="4">Rule 4: Random 60-79</option>
-                <option value="5">Rule 5: Random 80-99</option>
-                <option value="6">Rule 6: Random from 100,200,...,900</option>
-                <option value="7">Rule 7: Random 1-999</option>
+                <option value="1">10 à 19</option>
+                <option value="2">Dizaines simples</option>
+                <option value="3">10 à 69</option>
+                <option value="4">60 à 79</option>
+                <option value="5">80 à 99</option>
+                <option value="6">Centaines</option>
+                <option value="7">1 à 999</option>
             </select>
         </div>
-        <button id="generateBtn" onclick="generateNumberFromSelected()">Generate Number</button>
+        <button id="generateBtn" onclick="generateNumberFromSelected()">Nouveau nombre !</button>
     </div>
 
     <script>
