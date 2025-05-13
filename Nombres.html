@@ -118,10 +118,40 @@
     </div>
 
     <script>
+        // Store the current displayed number
+        let currentNumber = 0;
+        
         function getRandomInt(min, max) {
             min = Math.ceil(min);
             max = Math.floor(max);
             return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        function generateUniqueNumber(min, max, currentNum) {
+            // If range only has one possible value, return it
+            if (min === max) return min;
+            
+            // If range only has two possible values, return the other one
+            if (max - min === 1) return currentNum === min ? max : min;
+            
+            // Generate a new number that's different from the current one
+            let newNumber;
+            do {
+                newNumber = getRandomInt(min, max);
+            } while (newNumber === currentNum);
+            
+            return newNumber;
+        }
+        
+        function generateUniqueFromList(options, currentNum) {
+            // If the list has only one option, return it
+            if (options.length === 1) return options[0];
+            
+            // Filter out the current number
+            const availableOptions = options.filter(num => num !== currentNum);
+            
+            // Return a random number from the available options
+            return availableOptions[Math.floor(Math.random() * availableOptions.length)];
         }
         
         function generateNumber(buttonNum) {
@@ -129,30 +159,34 @@
             
             switch (buttonNum) {
                 case 1:
-                    number = getRandomInt(10, 19);
+                    number = generateUniqueNumber(10, 19, currentNumber);
                     break;
                 case 2:
                     const options = [10, 20, 30, 40, 50, 60];
-                    number = options[Math.floor(Math.random() * options.length)];
+                    number = generateUniqueFromList(options, currentNumber);
                     break;
                 case 3:
-                    number = getRandomInt(10, 69);
+                    number = generateUniqueNumber(10, 69, currentNumber);
                     break;
                 case 4:
-                    number = getRandomInt(60, 79);
+                    number = generateUniqueNumber(60, 79, currentNumber);
                     break;
                 case 5:
-                    number = getRandomInt(80, 99);
+                    number = generateUniqueNumber(80, 99, currentNumber);
                     break;
                 case 6:
-                    number = getRandomInt(1, 9) * 100;
+                    const hundreds = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+                    number = generateUniqueFromList(hundreds, currentNumber);
                     break;
                 case 7:
-                    number = getRandomInt(1, 999);
+                    number = generateUniqueNumber(1, 999, currentNumber);
                     break;
                 default:
                     number = 0;
             }
+            
+            // Update the current number
+            currentNumber = number;
             
             displayNumber(number);
             
