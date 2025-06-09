@@ -29,6 +29,10 @@
             font-size: 72px;
             font-weight: bold;
         }
+
+        .thousands {
+            color: blue;
+        }
         
         .hundreds {
             color: green;
@@ -100,7 +104,7 @@
     
     <div class="display-area">
         <div class="number" id="numberDisplay">
-            <span class="hundreds" id="hundreds"></span><span class="tens" id="tens"></span><span class="units" id="units"></span>
+            <span class="thousands" id="thousands"><span class="hundreds" id="hundreds"></span><span class="tens" id="tens"></span><span class="units" id="units"></span>
         </div>
     </div>
     
@@ -115,6 +119,8 @@
                 <option value="5">80 à 99</option>
                 <option value="6">Centaines</option>
                 <option value="7">1 à 999</option>
+                <option value="8">Milliers</option>
+                <option value="9">1 à 9999</option>
             </select>
         </div>
         <button id="generateBtn" onclick="generateNumberFromSelected()">Nouveau nombre !</button>
@@ -193,6 +199,13 @@
                 case 7:
                     number = generateUniqueNumber(1, 999, currentNumber);
                     break;
+                case 8:
+                    const thousands = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000];
+                    number = generateUniqueFromList(thousands, currentNumber);
+                    break;
+                case 9:
+                    number = generateUniqueNumber(1, 9999, currentNumber);
+                    break;
                 default:
                     number = 0;
             }
@@ -211,12 +224,14 @@
         }
         
         function displayNumber(number) {
+            const thousands = Math.floor(number / 1000);
             const hundreds = Math.floor(number / 100);
             const tens = Math.floor((number % 100) / 10);
             const units = number % 10;
-            
-            document.getElementById('hundreds').textContent = hundreds > 0 ? hundreds : '';
-            document.getElementById('tens').textContent = (hundreds > 0 || tens > 0) ? tens : '';
+
+            document.getElementById('thousands').textContent = thousands > 0 ? thousands : '';
+            document.getElementById('hundreds').textContent = (thousands > 0 || hundreds > 0) ? hundreds : '';
+            document.getElementById('tens').textContent = (thousands > 0 || hundreds > 0 || tens > 0) ? tens : '';
             document.getElementById('units').textContent = units;
         }
     </script>
