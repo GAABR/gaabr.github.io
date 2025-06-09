@@ -225,7 +225,7 @@
         
         function displayNumber(number) {
             const thousands = Math.floor(number / 1000);
-            const hundreds = Math.floor(number / 100);
+            const hundreds = Math.floor((number % 1000) / 100);
             const tens = Math.floor((number % 100) / 10);
             const units = number % 10;
 
