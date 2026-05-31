@@ -12,7 +12,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700;9..144,900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700;9..144,900&family=Cardo:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
   :root {
@@ -216,8 +216,8 @@
   }
 
   .display {
-    font-family: 'Newsreader', 'Fraunces', serif;
-    font-weight: 500;
+    font-family: 'Cardo', 'Fraunces', serif;
+    font-weight: 400;
     font-size: clamp(140px, 26vh, 280px);
     line-height: 1;
     letter-spacing: -.005em;
@@ -227,7 +227,7 @@
     padding: 0 16px;
   }
   .display.idle {
-    font-family: 'Newsreader', serif;
+    font-family: 'Cardo', serif;
     font-style: italic;
     font-weight: 400;
     font-size: clamp(48px, 8vh, 88px);
@@ -434,13 +434,48 @@
   .modal-actions {
     margin-top: 32px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 12px;
   }
   .modal-actions .primary-btn {
     min-width: 160px;
     padding: 16px 40px;
     font-size: 18px;
+  }
+
+  .reset-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 12px 20px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all .2s ease;
+    letter-spacing: .02em;
+  }
+  .reset-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .reset-btn.armed {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(176,67,42,.5); }
+    50%      { box-shadow: 0 0 0 8px rgba(176,67,42,0); }
+  }
+  .reset-btn.done {
+    background: transparent;
+    color: var(--ink-soft);
+    border-color: var(--line);
+    animation: none;
   }
 
   /* ---------- CELEBRATION OVERLAY ---------- */
@@ -633,6 +668,7 @@
     </div>
 
     <div class="modal-actions">
+      <button class="reset-btn" id="resetBtn" type="button">Réinitialiser les records</button>
       <button class="primary-btn" id="modalOk">OK</button>
     </div>
   </div>
@@ -703,6 +739,7 @@
   const timeMinus    = $('timeMinus');
   const timePlus     = $('timePlus');
   const gameGrid     = $('gameGrid');
+  const resetBtn     = $('resetBtn');
   const celebration  = $('celebration');
   const confettiEl   = $('confetti');
   const celebScoreEl = $('celebScore');
@@ -925,6 +962,7 @@
     buildGameGrid();
     timeInput.value = duration;
     document.querySelector(`input[name="player"][value="${currentPlayer}"]`).checked = true;
+    disarmResetBtn();
     modal.hidden = false;
   }
   function closeModal() { modal.hidden = true; }
@@ -961,6 +999,46 @@
     saveConfig();
     refreshHighScore();
     closeModal();
+  });
+
+  /* ---- Reset high scores (two-step confirmation) ---- */
+  let resetArmedTimer = null;
+
+  function disarmResetBtn() {
+    clearTimeout(resetArmedTimer);
+    resetBtn.classList.remove('armed', 'done');
+    resetBtn.textContent = 'Réinitialiser les records';
+    resetBtn.dataset.armed = 'false';
+  }
+
+  function clearAllHighScores() {
+    GAMES.forEach(g => {
+      ['p1', 'p2'].forEach(p => {
+        try { localStorage.removeItem(highScoreKey(p, g.id)); } catch(e) {}
+      });
+    });
+  }
+
+  resetBtn.addEventListener('click', () => {
+    if (resetBtn.dataset.armed === 'true') {
+      // Second click — confirm
+      clearAllHighScores();
+      refreshHighScore();
+      clearTimeout(resetArmedTimer);
+      resetBtn.classList.remove('armed');
+      resetBtn.classList.add('done');
+      resetBtn.textContent = '✓ Records effacés';
+      resetBtn.dataset.armed = 'false';
+      setTimeout(disarmResetBtn, 1800);
+    } else {
+      // First click — arm
+      resetBtn.dataset.armed = 'true';
+      resetBtn.classList.add('armed');
+      resetBtn.textContent = 'Confirmer la suppression ?';
+      clearTimeout(resetArmedTimer);
+      // Auto-disarm after 4 seconds if no confirmation
+      resetArmedTimer = setTimeout(disarmResetBtn, 4000);
+    }
   });
 
   /* ---- Init ---- */
