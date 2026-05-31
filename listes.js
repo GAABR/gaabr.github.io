@@ -7,16 +7,12 @@
 window.LISTES = {
 
   voyelles: [
-    "a", "e", "é", "è", "ê", "i", "o", "u",
-    "ou", "on", "an", "in", "ai", "ei", "eu", "au", "eau"
+    "a", "e", "é", "è", "ê", "i", "o", "u"
   ],
 
   consonnes: [
-    "b", "c", "d", "f", "g", "j", "l", "m", "n",
-    "p", "r", "s", "t", "v", "z",
-    "ch", "br", "cr", "dr", "fr", "gr", "pr", "tr",
-    "bl", "cl", "fl", "gl", "pl"
-  ],
+    "s", "j", "v", "l", "r", "f"
+],
 
   mots: [
     "chat", "chien", "maison", "école", "papa", "maman",
