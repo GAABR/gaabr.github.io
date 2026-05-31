@@ -218,13 +218,14 @@
   .display {
     font-family: 'Cardo', 'Fraunces', serif;
     font-weight: 400;
-    font-size: clamp(140px, 26vh, 280px);
+    font-size: var(--display-size, clamp(140px, 26vh, 280px));
     line-height: 1;
     letter-spacing: -.005em;
     color: var(--ink);
     transition: opacity .12s ease, transform .12s ease;
     text-align: center;
     padding: 0 16px;
+    white-space: nowrap;
   }
   .display.idle {
     font-family: 'Cardo', serif;
@@ -235,9 +236,9 @@
   }
   .display.flash { opacity: 0; transform: scale(.96); }
 
-  /* Auto-shrink for longer content */
-  .display.long  { font-size: clamp(110px, 20vh, 220px); }
-  .display.xlong { font-size: clamp(80px, 15vh, 170px); }
+  /* (Legacy classes kept harmless — JS now does the sizing dynamically.) */
+  .display.long  { }
+  .display.xlong { }
 
   /* ---------- FOOTER / BUTTON ---------- */
   footer {
@@ -817,6 +818,42 @@
     }).join('');
   }
 
+  /* Measure and fit the display text to its frame */
+  function fitDisplay() {
+    const frame = displayEl.parentElement;
+    const frameW = frame.clientWidth;
+    const frameH = frame.clientHeight;
+    if (!frameW || !frameH) return;
+
+    // Reset to ideal max size, then shrink if it overflows.
+    // Cap by the frame itself so we never aim larger than it can hold.
+    const idealMax = Math.min(
+      280,                       // absolute ceiling
+      window.innerHeight * 0.26, // matches old clamp's 26vh
+      frameH * 0.85              // never exceed 85% of frame height
+    );
+    let size = Math.max(60, idealMax);
+    displayEl.style.setProperty('--display-size', size + 'px');
+
+    // Force layout reflow so scrollWidth reflects the new size
+    // eslint-disable-next-line no-unused-expressions
+    displayEl.offsetWidth;
+
+    // The display has 16px padding each side; account for it
+    const availableW = frameW - 32;
+    const availableH = frameH - 16;
+
+    // Binary-friendly proportional shrink: if it overflows, scale down
+    const overflowW = displayEl.scrollWidth / availableW;
+    const overflowH = displayEl.scrollHeight / availableH;
+    const overflow = Math.max(overflowW, overflowH);
+
+    if (overflow > 1) {
+      size = Math.max(40, Math.floor(size / overflow * 0.98)); // 0.98 for safety margin
+      displayEl.style.setProperty('--display-size', size + 'px');
+    }
+  }
+
   function showContent() {
     let next, attempts = 0;
     do {
@@ -828,15 +865,12 @@
     displayEl.classList.add('flash');
     setTimeout(() => {
       displayEl.classList.remove('idle');
-      // Auto-shrink for long fragments
-      const len = next.text.length;
-      displayEl.classList.toggle('xlong', len > 6);
-      displayEl.classList.toggle('long',  len > 4 && len <= 6);
       if (next.numeric) {
         displayEl.innerHTML = colorizeNumber(next.text);
       } else {
         displayEl.textContent = next.text;
       }
+      fitDisplay();
       displayEl.classList.remove('flash');
     }, 80);
   }
@@ -845,11 +879,20 @@
     displayEl.classList.add('flash');
     setTimeout(() => {
       displayEl.classList.add('idle');
-      displayEl.classList.remove('long','xlong');
+      displayEl.style.removeProperty('--display-size'); // let CSS handle idle size
       displayEl.innerHTML = text;
       displayEl.classList.remove('flash');
     }, 80);
   }
+
+  // Refit on resize / orientation change
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!displayEl.classList.contains('idle')) fitDisplay();
+    }, 100);
+  });
 
   /* ---- Game flow ---- */
   function startGame() {
