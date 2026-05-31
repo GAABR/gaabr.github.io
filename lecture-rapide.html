@@ -6,9 +6,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Lecture Rapide</title>
+
+<!-- Load editable lists. Falls back to built-in defaults if not found. -->
+<script src="listes.js"></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700;9..144,900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
   :root {
     --bg: #F2EBDD;
@@ -21,6 +26,13 @@
     --line: #C9BFA8;
     --shadow: 0 1px 0 rgba(31,27,23,.06), 0 12px 40px -12px rgba(31,27,23,.18);
     --radius: 18px;
+
+    /* Fixed colors per digit position (units, tens, hundreds, thousands, tens of thousands) */
+    --digit-0: #C8453B; /* units        — red    */
+    --digit-1: #1E6FB8; /* tens         — blue   */
+    --digit-2: #3D8B47; /* hundreds     — green  */
+    --digit-3: #7B3F8F; /* thousands    — purple */
+    --digit-4: #D67817; /* tens of thou — orange */
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,7 +56,6 @@
     overscroll-behavior: none;
   }
 
-  /* subtle paper grain */
   body::before {
     content: "";
     position: fixed;
@@ -67,20 +78,12 @@
     gap: clamp(12px, 2vh, 24px);
   }
 
-  /* ---------- HEADER ---------- */
+  /* ---------- HEADER (time only, left) ---------- */
   header {
     display: flex;
     align-items: center;
     justify-content: flex-start;
   }
-
-  .stats {
-    display: flex;
-    gap: clamp(28px, 5vw, 64px);
-    align-items: baseline;
-  }
-
-  .stats.right { justify-content: flex-end; }
 
   .stat {
     display: flex;
@@ -88,8 +91,6 @@
     align-items: flex-start;
     line-height: 1;
   }
-  .stats.right .stat { align-items: flex-end; }
-
   .stat .label {
     font-family: 'Inter', sans-serif;
     font-size: 12px;
@@ -99,7 +100,6 @@
     color: var(--ink-soft);
     margin-bottom: 8px;
   }
-
   .stat .value {
     font-family: 'Fraunces', serif;
     font-variant-numeric: tabular-nums;
@@ -108,28 +108,34 @@
     color: var(--ink);
     letter-spacing: -.02em;
   }
-
   .stat.warn .value { color: var(--accent); }
 
-  /* ---------- SCORE BANNER (centered above display) ---------- */
+  /* ---------- SCORE BANNER (center, above display) ---------- */
   .score-banner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(28px, 5vw, 64px);
+    line-height: 1;
+  }
+
+  .score-block {
     display: flex;
     flex-direction: column;
     align-items: center;
-    line-height: 1;
-    gap: 10px;
+    gap: 8px;
   }
 
-  .score-banner .label {
+  .score-block .label {
     font-family: 'Inter', sans-serif;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: .22em;
     text-transform: uppercase;
     color: var(--ink-soft);
   }
 
-  .score-banner .value {
+  .score-block .value {
     font-family: 'Fraunces', serif;
     font-variant-numeric: tabular-nums;
     font-weight: 500;
@@ -137,7 +143,20 @@
     color: var(--ink);
     letter-spacing: -.02em;
   }
+  .score-block.muted .value {
+    font-size: clamp(36px, 5vh, 50px);
+    color: var(--ink-soft);
+    font-style: italic;
+  }
 
+  .score-divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--line);
+    margin: 0 4px;
+  }
+
+  /* ---------- GEAR ---------- */
   .gear {
     position: absolute;
     top: clamp(20px, 3vh, 40px);
@@ -179,7 +198,6 @@
     overflow: hidden;
   }
 
-  /* corner ornaments */
   .display-frame::before,
   .display-frame::after {
     content: "";
@@ -205,8 +223,9 @@
     letter-spacing: -.005em;
     color: var(--ink);
     transition: opacity .12s ease, transform .12s ease;
+    text-align: center;
+    padding: 0 16px;
   }
-
   .display.idle {
     font-family: 'Newsreader', serif;
     font-style: italic;
@@ -214,11 +233,11 @@
     font-size: clamp(48px, 8vh, 88px);
     color: var(--ink-soft);
   }
+  .display.flash { opacity: 0; transform: scale(.96); }
 
-  .display.flash {
-    opacity: 0;
-    transform: scale(.96);
-  }
+  /* Auto-shrink for longer content */
+  .display.long  { font-size: clamp(110px, 20vh, 220px); }
+  .display.xlong { font-size: clamp(80px, 15vh, 170px); }
 
   /* ---------- FOOTER / BUTTON ---------- */
   footer {
@@ -240,19 +259,23 @@
     cursor: pointer;
     min-width: min(420px, 70vw);
     box-shadow: 0 1px 0 rgba(255,255,255,.1) inset, 0 6px 20px -6px rgba(31,27,23,.45);
-    transition: transform .12s ease, background .2s ease, box-shadow .2s ease;
+    transition: transform .12s ease, background .2s ease, box-shadow .2s ease, opacity .2s ease;
   }
   .primary-btn:hover { background: #2C2620; }
-  .primary-btn:active {
+  .primary-btn:active:not(:disabled) {
     transform: translateY(2px);
     box-shadow: 0 1px 0 rgba(255,255,255,.1) inset, 0 2px 8px -2px rgba(31,27,23,.45);
   }
+  .primary-btn:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+    background: var(--ink-soft);
+  }
 
-  .primary-btn.start { background: var(--accent); }
-  .primary-btn.start:hover { background: var(--accent-dark); }
-
-  .primary-btn.restart { background: var(--accent); }
-  .primary-btn.restart:hover { background: var(--accent-dark); }
+  .primary-btn.start    { background: var(--accent); }
+  .primary-btn.start:hover    { background: var(--accent-dark); }
+  .primary-btn.restart  { background: var(--accent); }
+  .primary-btn.restart:hover  { background: var(--accent-dark); }
 
   /* ---------- MODAL ---------- */
   .modal {
@@ -310,6 +333,34 @@
     display: block;
   }
 
+  /* Player segmented control */
+  .seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    background: var(--bg);
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .seg label {
+    cursor: pointer;
+    text-align: center;
+    padding: 14px;
+    border-radius: 10px;
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--ink-soft);
+    transition: all .15s ease;
+  }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg input:checked + label {
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: 0 2px 8px -2px rgba(31,27,23,.3);
+  }
+
+  /* Time row */
   .time-row {
     display: flex;
     align-items: center;
@@ -332,11 +383,7 @@
     outline: none;
   }
   .time-row .unit { color: var(--ink-soft); font-size: 14px; }
-  .time-row .stepper {
-    margin-left: auto;
-    display: flex;
-    gap: 8px;
-  }
+  .time-row .stepper { margin-left: auto; display: flex; gap: 8px; }
   .step-btn {
     width: 36px; height: 36px;
     border-radius: 8px;
@@ -350,57 +397,39 @@
   .step-btn:hover { background: var(--bg-soft); }
   .step-btn:active { transform: scale(.94); }
 
-  .grid-controls {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-  .small-btn {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: transparent;
-    color: var(--ink-soft);
-    cursor: pointer;
-    transition: all .15s ease;
-  }
-  .small-btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-
-  .checkbox-grid {
+  /* Game grid */
+  .game-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 10px;
   }
-
-  .cb {
+  .game-grid label {
     position: relative;
     cursor: pointer;
   }
-  .cb input { position: absolute; opacity: 0; pointer-events: none; }
-  .cb .pill {
-    display: grid;
-    place-items: center;
-    padding: 14px 8px;
+  .game-grid input { position: absolute; opacity: 0; pointer-events: none; }
+  .game-grid .pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 10px;
     background: var(--bg);
     border: 1.5px solid var(--line);
     border-radius: 12px;
     font-family: 'Fraunces', serif;
-    font-size: 26px;
+    font-size: 18px;
     font-weight: 500;
     color: var(--ink-soft);
+    text-align: center;
     transition: all .15s ease;
     min-height: 60px;
   }
-  .cb input:checked + .pill {
+  .game-grid input:checked + .pill {
     background: var(--ink);
     color: var(--paper);
     border-color: var(--ink);
   }
-  .cb:active .pill { transform: scale(.96); }
+  .game-grid label:active .pill { transform: scale(.96); }
 
   .modal-actions {
     margin-top: 32px;
@@ -408,19 +437,123 @@
     justify-content: flex-end;
     gap: 12px;
   }
-
   .modal-actions .primary-btn {
     min-width: 160px;
     padding: 16px 40px;
     font-size: 18px;
   }
 
-  /* tablets in portrait + smaller */
+  /* ---------- CELEBRATION OVERLAY ---------- */
+  .celebration {
+    position: fixed;
+    inset: 0;
+    background: rgba(31,27,23,.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: grid;
+    place-items: center;
+    z-index: 200;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .celebration[hidden] { display: none; }
+
+  .celebration-card {
+    text-align: center;
+    color: var(--paper);
+    animation: popIn .5s cubic-bezier(.18,1.4,.4,1);
+    position: relative;
+    z-index: 2;
+  }
+  .celebration-card .bravo {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: clamp(80px, 16vh, 160px);
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, #FFD56A 0%, #FF8B3D 50%, #E8417C 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+    margin-bottom: 12px;
+    text-shadow: 0 4px 20px rgba(255,140,60,.4);
+  }
+  .celebration-card .sub {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(24px, 4vh, 38px);
+    color: var(--paper);
+    margin-bottom: 24px;
+    font-style: italic;
+  }
+  .celebration-card .new-score {
+    font-family: 'Fraunces', serif;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    font-size: clamp(64px, 10vh, 100px);
+    color: #FFD56A;
+    line-height: 1;
+  }
+  .celebration-card .new-score-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(251,247,238,.7);
+    margin-top: 12px;
+  }
+  .celebration-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 0; right: 0;
+    text-align: center;
+    color: rgba(251,247,238,.6);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: .1em;
+    z-index: 2;
+  }
+
+  @keyframes popIn {
+    0%   { transform: scale(.3) rotate(-8deg); opacity: 0; }
+    60%  { transform: scale(1.08) rotate(2deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  /* Confetti */
+  .confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: -20px;
+    width: 12px;
+    height: 14px;
+    opacity: 0;
+    animation: confettiFall 3.5s ease-in forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 1; }
+  }
+  .confetti-piece.round { border-radius: 50%; width: 10px; height: 10px; }
+  .confetti-piece.star {
+    width: 24px; height: 24px;
+    background: transparent !important;
+    font-size: 22px;
+    text-align: center;
+    line-height: 1;
+  }
+
+  /* tablets in portrait */
   @media (max-width: 820px) and (orientation: portrait) {
     .display-frame { aspect-ratio: 4/3; }
   }
-
-  /* prevent landscape overflow on small screens */
   @media (max-height: 500px) {
     .display { font-size: clamp(80px, 22vh, 160px); }
   }
@@ -437,8 +570,15 @@
   </header>
 
   <div class="score-banner">
-    <span class="label">Score</span>
-    <span class="value" id="counter">0</span>
+    <div class="score-block">
+      <span class="label">Score</span>
+      <span class="value" id="counter">0</span>
+    </div>
+    <div class="score-divider"></div>
+    <div class="score-block muted">
+      <span class="label">Record · <span id="playerLabel">Joueur 1</span></span>
+      <span class="value" id="highScore">0</span>
+    </div>
   </div>
 
   <button class="gear" id="gearBtn" aria-label="Configuration">
@@ -463,7 +603,17 @@
 <div class="modal" id="modal" hidden>
   <div class="modal-card">
     <h2>Configuration</h2>
-    <p class="subtitle">Ajuster la durée et choisir les syllabes</p>
+    <p class="subtitle">Joueur, durée et type de jeu</p>
+
+    <div class="field">
+      <label class="field-label">Joueur</label>
+      <div class="seg" id="playerSeg">
+        <input type="radio" name="player" value="p1" id="p1" checked>
+        <label for="p1">Joueur 1</label>
+        <input type="radio" name="player" value="p2" id="p2">
+        <label for="p2">Joueur 2</label>
+      </div>
+    </div>
 
     <div class="field">
       <label class="field-label">Durée du chronomètre</label>
@@ -478,12 +628,8 @@
     </div>
 
     <div class="field">
-      <label class="field-label">Syllabes incluses</label>
-      <div class="grid-controls">
-        <button class="small-btn" id="selectAll">Tout sélectionner</button>
-        <button class="small-btn" id="selectNone">Tout désélectionner</button>
-      </div>
-      <div class="checkbox-grid" id="checkboxGrid"></div>
+      <label class="field-label">Type de jeu</label>
+      <div class="game-grid" id="gameGrid"></div>
     </div>
 
     <div class="modal-actions">
@@ -492,82 +638,168 @@
   </div>
 </div>
 
+<!-- Celebration overlay -->
+<div class="celebration" id="celebration" hidden>
+  <div class="confetti" id="confetti"></div>
+  <div class="celebration-card">
+    <div class="bravo">Bravo&nbsp;!</div>
+    <div class="sub">Nouveau record</div>
+    <div class="new-score" id="celebScore">0</div>
+    <div class="new-score-label">points</div>
+  </div>
+  <div class="celebration-hint">touche pour continuer</div>
+</div>
+
 <script>
   /* ============================================================
-     ═══ MODIFY YOUR LIST HERE ═══
-     Add or remove syllables freely. The configuration menu
-     adjusts to whatever is in this array.
+     Lists come from listes.js. If that file fails to load, we
+     fall back to minimal built-in defaults so the app still runs.
      ============================================================ */
-  const WORD_LIST = [
-    "sa", "se", "sé", "sè", "sê", "si", "so", "su",
-    "ja", "je", "jé", "jè", "jê", "ji", "jo", "ju",
-    "va", "ve", "vé", "vè", "vê", "vi", "vo", "vu",
-    "la", "le", "lé", "lè", "lê", "li", "lo", "lu",
-    "ra", "re", "ré", "rè", "rê", "ri", "ro", "ru",
-    "fa", "fe", "fé", "fè", "fê", "fi", "fo", "fu",
-    "il"
+  const FALLBACK_LISTES = {
+    voyelles: ["a","e","é","è","ê","i","o","u","ou"],
+    consonnes: ["b","c","d","f","g","j","l","m","n","p","r","s","t","v","z","ch","br","cr","tr"],
+    mots: ["chat","chien","maison","école","papa","maman","livre","ami"]
+  };
+  const LISTES = (window.LISTES && window.LISTES.voyelles) ? window.LISTES : FALLBACK_LISTES;
+
+  /* All available games. Add/remove/rename here. */
+  const GAMES = [
+    { id: 'cv',     label: 'cv',         numeric: false },
+    { id: 'vc',     label: 'vc',         numeric: false },
+    { id: 'cvvc',   label: 'cv ou vc',   numeric: false },
+    { id: 'cvc',    label: 'cvc',        numeric: false },
+    { id: 'mots',   label: 'mots',       numeric: false },
+    { id: 'diz',    label: 'dizaines',   numeric: true, min: 10,    max: 99    },
+    { id: 'cent',   label: 'centaines',  numeric: true, min: 100,   max: 999   },
+    { id: 'mil',    label: 'milliers',   numeric: true, min: 1000,  max: 9999  },
+    { id: 'dmil',   label: 'dizaines de milliers', numeric: true, min: 10000, max: 99999 }
   ];
 
-  /* Default timer duration in seconds */
   const DEFAULT_DURATION = 60;
-  /* ============================================================ */
 
-  // ---- State ----
-  let duration = DEFAULT_DURATION;
-  let timeLeft = duration;
-  let counter = 0;
-  let included = new Set(WORD_LIST);
-  let timerId = null;
-  let lastWord = null;
-  let phase = 'idle'; // idle | running | finished
+  /* ---- State ---- */
+  let duration       = DEFAULT_DURATION;
+  let currentGame    = 'cv';
+  let currentPlayer  = 'p1';
+  let timeLeft       = duration;
+  let counter        = 0;
+  let timerId        = null;
+  let lastContent    = null;
+  let phase          = 'idle'; // idle | running | finished
 
-  // ---- DOM ----
+  /* ---- DOM ---- */
   const $ = id => document.getElementById(id);
-  const displayEl = $('display');
-  const mainBtn = $('mainBtn');
-  const counterEl = $('counter');
-  const timeEl = $('time');
-  const timeStat = $('timeStat');
-  const gearBtn = $('gearBtn');
-  const modal = $('modal');
-  const checkboxGrid = $('checkboxGrid');
-  const timeInput = $('timeInput');
-  const modalOk = $('modalOk');
-  const timeMinus = $('timeMinus');
-  const timePlus = $('timePlus');
-  const selectAll = $('selectAll');
-  const selectNone = $('selectNone');
+  const displayEl    = $('display');
+  const mainBtn      = $('mainBtn');
+  const counterEl    = $('counter');
+  const highScoreEl  = $('highScore');
+  const playerLabelEl= $('playerLabel');
+  const timeEl       = $('time');
+  const timeStat     = $('timeStat');
+  const gearBtn      = $('gearBtn');
+  const modal        = $('modal');
+  const timeInput    = $('timeInput');
+  const modalOk      = $('modalOk');
+  const timeMinus    = $('timeMinus');
+  const timePlus     = $('timePlus');
+  const gameGrid     = $('gameGrid');
+  const celebration  = $('celebration');
+  const confettiEl   = $('confetti');
+  const celebScoreEl = $('celebScore');
 
-  // ---- Helpers ----
+  /* ---- localStorage helpers ---- */
+  const LS = {
+    get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch(e){ return d; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch(e){} }
+  };
+
+  function loadConfig() {
+    const d = parseInt(LS.get('lr_duration', String(DEFAULT_DURATION)), 10);
+    if (!isNaN(d) && d >= 5) duration = d;
+    const g = LS.get('lr_game', 'cv');
+    if (GAMES.some(x => x.id === g)) currentGame = g;
+    const p = LS.get('lr_player', 'p1');
+    if (p === 'p1' || p === 'p2') currentPlayer = p;
+  }
+  function saveConfig() {
+    LS.set('lr_duration', String(duration));
+    LS.set('lr_game', currentGame);
+    LS.set('lr_player', currentPlayer);
+  }
+
+  function highScoreKey(player, game) { return `lr_hs_${player}_${game}`; }
+  function getHighScore(player = currentPlayer, game = currentGame) {
+    return parseInt(LS.get(highScoreKey(player, game), '0'), 10) || 0;
+  }
+  function setHighScore(score) { LS.set(highScoreKey(currentPlayer, currentGame), String(score)); }
+
+  /* ---- Formatting helpers ---- */
   function fmt(s) {
     s = Math.max(0, s);
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   }
-
   function refreshTime() {
     timeEl.textContent = fmt(timeLeft);
     timeStat.classList.toggle('warn', phase === 'running' && timeLeft <= 10);
   }
-
-  function pickRandom() {
-    const pool = WORD_LIST.filter(w => included.has(w));
-    if (pool.length === 0) return '—';
-    if (pool.length === 1) return pool[0];
-    let pick;
-    do {
-      pick = pool[Math.floor(Math.random() * pool.length)];
-    } while (pick === lastWord);
-    lastWord = pick;
-    return pick;
+  function refreshHighScore() {
+    highScoreEl.textContent = getHighScore();
+    playerLabelEl.textContent = currentPlayer === 'p1' ? 'Joueur 1' : 'Joueur 2';
   }
 
-  function showWord(w) {
+  /* ---- Content generation ---- */
+  function rand(arr)        { return arr[Math.floor(Math.random() * arr.length)]; }
+  function randInt(min,max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+
+  function generateContent() {
+    const v = LISTES.voyelles, c = LISTES.consonnes, m = LISTES.mots;
+    switch (currentGame) {
+      case 'cv':   return { text: rand(c) + rand(v), numeric: false };
+      case 'vc':   return { text: rand(v) + rand(c), numeric: false };
+      case 'cvvc': return Math.random() < 0.5
+                     ? { text: rand(c) + rand(v), numeric: false }
+                     : { text: rand(v) + rand(c), numeric: false };
+      case 'cvc':  return { text: rand(c) + rand(v) + rand(c), numeric: false };
+      case 'mots': return { text: rand(m), numeric: false };
+      default: {
+        const g = GAMES.find(x => x.id === currentGame);
+        return { text: String(randInt(g.min, g.max)), numeric: true };
+      }
+    }
+  }
+
+  /* Colored digits — fixed color per position from the right */
+  function colorizeNumber(numStr) {
+    const len = numStr.length;
+    return numStr.split('').map((d, i) => {
+      const pos = len - 1 - i;          // 0=units, 1=tens, 2=hundreds, ...
+      const cssVar = `var(--digit-${Math.min(pos, 4)})`;
+      return `<span style="color:${cssVar}">${d}</span>`;
+    }).join('');
+  }
+
+  function showContent() {
+    let next, attempts = 0;
+    do {
+      next = generateContent();
+      attempts++;
+    } while (next.text === lastContent && attempts < 5);
+    lastContent = next.text;
+
     displayEl.classList.add('flash');
     setTimeout(() => {
       displayEl.classList.remove('idle');
-      displayEl.textContent = w;
+      // Auto-shrink for long fragments
+      const len = next.text.length;
+      displayEl.classList.toggle('xlong', len > 6);
+      displayEl.classList.toggle('long',  len > 4 && len <= 6);
+      if (next.numeric) {
+        displayEl.innerHTML = colorizeNumber(next.text);
+      } else {
+        displayEl.textContent = next.text;
+      }
       displayEl.classList.remove('flash');
     }, 80);
   }
@@ -576,12 +808,13 @@
     displayEl.classList.add('flash');
     setTimeout(() => {
       displayEl.classList.add('idle');
+      displayEl.classList.remove('long','xlong');
       displayEl.innerHTML = text;
       displayEl.classList.remove('flash');
     }, 80);
   }
 
-  // ---- Game logic ----
+  /* ---- Game flow ---- */
   function startGame() {
     counter = 0;
     counterEl.textContent = counter;
@@ -590,8 +823,8 @@
     phase = 'running';
     mainBtn.textContent = 'OK';
     mainBtn.classList.remove('start', 'restart');
-    lastWord = null;
-    showWord(pickRandom());
+    lastContent = null;
+    showContent();
 
     if (timerId) clearInterval(timerId);
     timerId = setInterval(() => {
@@ -609,94 +842,131 @@
     mainBtn.classList.add('restart');
     showIdleText('terminé&nbsp;!');
     timeStat.classList.remove('warn');
+
+    // Disable button for 2 seconds to prevent accidental restart
+    mainBtn.disabled = true;
+    setTimeout(() => { mainBtn.disabled = false; }, 2000);
+
+    // High score check
+    const prev = getHighScore();
+    if (counter > prev) {
+      setHighScore(counter);
+      refreshHighScore();
+      triggerCelebration(counter);
+    }
   }
 
   function nextWord() {
     counter++;
     counterEl.textContent = counter;
-    showWord(pickRandom());
+    showContent();
   }
 
   mainBtn.addEventListener('click', () => {
+    if (mainBtn.disabled) return;
     if (phase === 'idle' || phase === 'finished') startGame();
     else if (phase === 'running') nextWord();
   });
 
-  // ---- Configuration modal ----
-  function buildCheckboxes() {
-    checkboxGrid.innerHTML = '';
-    WORD_LIST.forEach(word => {
+  /* ---- Celebration ---- */
+  const CONFETTI_COLORS = ['#FFD56A','#FF8B3D','#E8417C','#6FCFAF','#5BAEE8','#B58CE3','#FFE38A'];
+  const STARS = ['⭐','🌟','✨','🎉','🎊'];
+
+  function triggerCelebration(score) {
+    celebScoreEl.textContent = score;
+    confettiEl.innerHTML = '';
+
+    // 50 falling confetti pieces (mix of squares, circles, stars)
+    for (let i = 0; i < 50; i++) {
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      const r = Math.random();
+      if (r < 0.2) {
+        p.classList.add('star');
+        p.textContent = STARS[Math.floor(Math.random() * STARS.length)];
+      } else {
+        if (r < 0.5) p.classList.add('round');
+        p.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      }
+      p.style.left = (Math.random() * 100) + '%';
+      p.style.animationDelay = (Math.random() * 1.2) + 's';
+      p.style.animationDuration = (2.6 + Math.random() * 1.6) + 's';
+      confettiEl.appendChild(p);
+    }
+    celebration.hidden = false;
+
+    // Auto-dismiss after 4.5s
+    clearTimeout(triggerCelebration._t);
+    triggerCelebration._t = setTimeout(closeCelebration, 4500);
+  }
+  function closeCelebration() { celebration.hidden = true; }
+  celebration.addEventListener('click', closeCelebration);
+
+  /* ---- Configuration modal ---- */
+  function buildGameGrid() {
+    gameGrid.innerHTML = '';
+    GAMES.forEach(g => {
       const label = document.createElement('label');
-      label.className = 'cb';
       const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = included.has(word);
-      input.dataset.word = word;
+      input.type = 'radio';
+      input.name = 'game';
+      input.value = g.id;
+      input.checked = (g.id === currentGame);
       const pill = document.createElement('span');
       pill.className = 'pill';
-      pill.textContent = word;
+      pill.textContent = g.label;
       label.appendChild(input);
       label.appendChild(pill);
-      checkboxGrid.appendChild(label);
+      gameGrid.appendChild(label);
     });
   }
 
   function openModal() {
-    buildCheckboxes();
+    buildGameGrid();
     timeInput.value = duration;
+    document.querySelector(`input[name="player"][value="${currentPlayer}"]`).checked = true;
     modal.hidden = false;
   }
-
-  function closeModal() {
-    modal.hidden = true;
-  }
+  function closeModal() { modal.hidden = true; }
 
   gearBtn.addEventListener('click', openModal);
-
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeModal();
-  });
-
-  selectAll.addEventListener('click', () => {
-    checkboxGrid.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
-  });
-  selectNone.addEventListener('click', () => {
-    checkboxGrid.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
-  });
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
   timeMinus.addEventListener('click', () => {
-    const v = Math.max(5, (parseInt(timeInput.value, 10) || 0) - 5);
-    timeInput.value = v;
+    timeInput.value = Math.max(5, (parseInt(timeInput.value, 10) || 0) - 5);
   });
   timePlus.addEventListener('click', () => {
-    const v = Math.min(3600, (parseInt(timeInput.value, 10) || 0) + 5);
-    timeInput.value = v;
+    timeInput.value = Math.min(3600, (parseInt(timeInput.value, 10) || 0) + 5);
   });
 
   modalOk.addEventListener('click', () => {
-    // Apply syllable selection
-    const newIncluded = new Set();
-    checkboxGrid.querySelectorAll('input[type=checkbox]').forEach(cb => {
-      if (cb.checked) newIncluded.add(cb.dataset.word);
-    });
-    if (newIncluded.size > 0) included = newIncluded;
-    // (If user unchecked everything we silently keep previous selection.)
+    // Player
+    const p = document.querySelector('input[name="player"]:checked');
+    if (p) currentPlayer = p.value;
 
-    // Apply duration
-    let newDuration = parseInt(timeInput.value, 10);
-    if (!isNaN(newDuration) && newDuration >= 5) {
-      duration = newDuration;
-      // If a game is not running, reflect new duration in the display
+    // Duration
+    const newDur = parseInt(timeInput.value, 10);
+    if (!isNaN(newDur) && newDur >= 5) {
+      duration = newDur;
       if (phase === 'idle' || phase === 'finished') {
         timeLeft = duration;
         refreshTime();
       }
     }
+
+    // Game
+    const g = document.querySelector('input[name="game"]:checked');
+    if (g) currentGame = g.value;
+
+    saveConfig();
+    refreshHighScore();
     closeModal();
   });
 
-  // ---- Init ----
+  /* ---- Init ---- */
+  loadConfig();
   refreshTime();
+  refreshHighScore();
 </script>
 </body>
 </html>
