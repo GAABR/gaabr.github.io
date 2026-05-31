@@ -15,9 +15,8 @@ window.LISTES = {
 ],
 
   mots: [
-    "chat", "chien", "maison", "école", "papa", "maman",
-    "livre", "table", "porte", "fleur", "ami", "rouge",
-    "bonjour", "voiture", "jardin", "soleil", "lune", "étoile"
+    "volé", "joli", "olive", "avalé", "vélo", "rire",
+    "lire", "il a mal", "favori", "affamé", "affolé"
   ]
 
 };
