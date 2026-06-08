@@ -236,6 +236,10 @@
   }
   .display.flash { opacity: 0; transform: scale(.96); }
 
+  .display .silent {
+    color: #B5AB97;
+  }
+
   /* (Legacy classes kept harmless — JS now does the sizing dynamically.) */
   .display.long  { }
   .display.xlong { }
@@ -818,6 +822,23 @@
     }).join('');
   }
 
+  /* Words: characters preceded by '\' are rendered as silent (light grey) */
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function renderWordWithSilents(raw) {
+    let out = '';
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i] === '\\' && i + 1 < raw.length) {
+        out += `<span class="silent">${escapeHtml(raw[i + 1])}</span>`;
+        i++;
+      } else {
+        out += escapeHtml(raw[i]);
+      }
+    }
+    return out;
+  }
+
   /* Measure and fit the display text to its frame */
   function fitDisplay() {
     const frame = displayEl.parentElement;
@@ -867,6 +888,8 @@
       displayEl.classList.remove('idle');
       if (next.numeric) {
         displayEl.innerHTML = colorizeNumber(next.text);
+      } else if (currentGame === 'mots') {
+        displayEl.innerHTML = renderWordWithSilents(next.text);
       } else {
         displayEl.textContent = next.text;
       }
