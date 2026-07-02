@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Voyage dans l'eau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font: 'Fredoka', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --ink: #123a56;
+    --card: rgba(255,255,255,0.82);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    overflow:hidden; position:fixed; inset:0;
+    overscroll-behavior:none; touch-action:none;
+    font-family:var(--font);
+    background:#bfe6ff;
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{ position:fixed; inset:0; }
+  #scene{ position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:none; }
+
+  /* ---- Boutons ---- */
+  .btn{
+    position:absolute; z-index:5;
+    border:none; cursor:pointer;
+    font-family:var(--font); font-weight:600;
+    color:var(--ink);
+    background:var(--card);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    box-shadow:0 6px 18px rgba(20,60,90,0.22), inset 0 1px 0 rgba(255,255,255,0.7);
+    border-radius:999px;
+    transition:transform .12s ease, box-shadow .12s ease, opacity .25s ease;
+    -webkit-user-select:none; user-select:none;
+    display:flex; align-items:center; justify-content:center; gap:.35em;
+  }
+  .btn:active{ transform:scale(0.93); box-shadow:0 3px 10px rgba(20,60,90,0.25); }
+
+  #freezeBtn{
+    top:calc(var(--safe-top) + 14px);
+    right:calc(var(--safe-right) + 14px);
+    padding:12px 20px;
+    font-size:clamp(16px, 4.6vw, 22px);
+    min-height:52px;
+  }
+  #backBtn{
+    top:calc(var(--safe-top) + 14px);
+    left:calc(var(--safe-left) + 14px);
+    width:52px; height:52px; padding:0;
+    font-size:26px; font-weight:700;
+    opacity:0; pointer-events:none; transform:scale(0.6);
+  }
+  #backBtn.show{ opacity:1; pointer-events:auto; transform:scale(1); }
+
+  /* ---- Légende (niveau atome) ---- */
+  #legend{
+    position:absolute; z-index:5;
+    left:50%; transform:translateX(-50%);
+    top:calc(var(--safe-top) + 78px);
+    display:flex; gap:14px; flex-wrap:wrap; justify-content:center;
+    padding:9px 16px;
+    background:rgba(255,255,255,0.14);
+    border:1px solid rgba(255,255,255,0.22);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    border-radius:16px;
+    opacity:0; pointer-events:none; transition:opacity .3s ease;
+    color:#fff; font-size:clamp(13px,3.6vw,16px); font-weight:500;
+  }
+  #legend.show{ opacity:1; }
+  #legend .item{ display:flex; align-items:center; gap:7px; }
+  #legend .dot{ width:16px; height:16px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#3a1010; }
+  .dot.proton{ background:#ff6b6f; color:#5a0d0d; }
+  .dot.neutron{ background:#c3cbd6; }
+  .dot.electron{ background:#54b0ff; color:#062a4d; }
+
+  /* ---- Bandeau de texte ---- */
+  #caption{
+    position:absolute; z-index:5;
+    left:50%; transform:translateX(-50%);
+    bottom:calc(var(--safe-bottom) + 16px);
+    width:min(640px, calc(100% - 28px));
+    padding:16px 20px;
+    background:var(--card);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    border-radius:22px;
+    box-shadow:0 8px 26px rgba(20,60,90,0.22), inset 0 1px 0 rgba(255,255,255,0.75);
+    color:var(--ink);
+    font-size:clamp(16px, 4.4vw, 21px);
+    font-weight:500; line-height:1.32;
+    text-align:center;
+    transition:opacity .28s ease;
+  }
+  #caption .lead{ font-weight:700; }
+
+  @media (prefers-reduced-motion: reduce){
+    .btn{ transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+  <button id="backBtn" class="btn" aria-label="Revenir en arrière">←</button>
+  <button id="freezeBtn" class="btn"><span id="freezeLabel">❄️ Glace</span></button>
+  <div id="legend">
+    <span class="item"><span class="dot proton">+</span>proton</span>
+    <span class="item"><span class="dot neutron"></span>neutron</span>
+    <span class="item"><span class="dot electron">−</span>électron</span>
+  </div>
+  <div id="caption"></div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------------------------------------------------------------------------
+  //  Réglages & état
+  // ---------------------------------------------------------------------------
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+  const freezeBtn = document.getElementById('freezeBtn');
+  const freezeLabel = document.getElementById('freezeLabel');
+  const backBtn = document.getElementById('backBtn');
+  const captionEl = document.getElementById('caption');
+  const legendEl = document.getElementById('legend');
+
+  let W = 0, H = 0, DPR = 1;
+
+  const LEVEL = { MACRO:0, MOLECULES:1, MOLECULE:2, ATOM:3 };
+
+  const state = {
+    level: LEVEL.MACRO,
+    isIce: false,
+    atomEl: 'H',        // 'H' ou 'O'
+    molecules: [],
+    wave: 0,            // phase des vagues / vibrations
+    electron: 0,        // phase des électrons
+    pulse: 0,           // phase de l'anneau "touche ici"
+  };
+
+  const trans = { active:false, from:0, to:0, dir:'in', t:0, dur:0.55, fx:0, fy:0 };
+
+  // Couleurs de fond (haut, bas) par niveau — le fond s'assombrit vers l'atome
+  const BG = {
+    0: ['#e2f4ff', '#a4d8ff'],
+    1: ['#eafaff', '#bfe6ff'],
+    2: ['#eef9ff', '#cbeaff'],
+    3: ['#243a6e', '#0d1730'],
+  };
+
+  const COL = {
+    oxygen:  '#ff5d63',
+    hydro:   '#eef7ff',
+    proton:  '#ff6b6f',
+    neutron: '#c3cbd6',
+    electron:'#54b0ff',
+  };
+
+  // ---------------------------------------------------------------------------
+  //  Utilitaires
+  // ---------------------------------------------------------------------------
+  const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+  const lerp = (a,b,t) => a + (b-a)*t;
+  const easeInOut = t => t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+
+  function hex(h){ h=h.replace('#',''); return { r:parseInt(h.slice(0,2),16), g:parseInt(h.slice(2,4),16), b:parseInt(h.slice(4,6),16) }; }
+  function toRgb(o){ return `rgb(${o.r|0},${o.g|0},${o.b|0})`; }
+  function mix(a,b,t){ return { r:lerp(a.r,b.r,t), g:lerp(a.g,b.g,t), b:lerp(a.b,b.b,t) }; }
+  function lighten(c,t){ return toRgb(mix(hex(c),{r:255,g:255,b:255},t)); }
+  function darken(c,t){ return toRgb(mix(hex(c),{r:0,g:0,b:0},t)); }
+  function lerpHex(c1,c2,t){ return toRgb(mix(hex(c1),hex(c2),t)); }
+
+  function circle(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.closePath(); }
+
+  // Boule 3D avec dégradé + reflet
+  function sphere(x,y,r,color){
+    const g = ctx.createRadialGradient(x-r*0.35, y-r*0.4, r*0.1, x, y, r);
+    g.addColorStop(0, lighten(color,0.55));
+    g.addColorStop(0.55, color);
+    g.addColorStop(1, darken(color,0.28));
+    ctx.fillStyle = g; circle(x,y,r); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    circle(x-r*0.34, y-r*0.42, r*0.2); ctx.fill();
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Bornes de la scène (là où les molécules évoluent)
+  // ---------------------------------------------------------------------------
+  function bounds(){
+    return { l: W*0.09, r: W*0.91, t: H*0.16, b: H*0.72 };
+  }
+  function molSize(){ return clamp(Math.min(W,H)*0.023, 9, 26); } // rayon de l'oxygène au niveau 1
+
+  // ---------------------------------------------------------------------------
+  //  Création des molécules
+  // ---------------------------------------------------------------------------
+  const COLS = 4, ROWS = 4, N = COLS*ROWS;
+
+  function buildMolecules(){
+    const b = bounds();
+    const dx = (b.r-b.l)/COLS, dy = (b.b-b.t)/ROWS;
+    state.molecules = [];
+    for(let i=0;i<N;i++){
+      const col = i % COLS, row = (i/COLS)|0;
+      const off = (row%2 ? 1 : -1) * dx*0.16; // décalage hexagonal pour le cristal
+      const lx = b.l + dx*(col+0.5) + off;
+      const ly = b.t + dy*(row+0.5);
+      const targetAngle = -Math.PI/2 + (col%2 ? 0.5 : -0.5); // orientation ordonnée
+      state.molecules.push({
+        x: b.l + Math.random()*(b.r-b.l),
+        y: b.t + Math.random()*(b.b-b.t),
+        vx: (Math.random()*2-1)*70,
+        vy: (Math.random()*2-1)*70,
+        angle: Math.random()*Math.PI*2,
+        va: (Math.random()*2-1)*1.1,
+        lx, ly, targetAngle,
+        phase: Math.random()*Math.PI*2,
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Mise à l'échelle du canvas
+  // ---------------------------------------------------------------------------
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W*DPR);
+    canvas.height = Math.round(H*DPR);
+    canvas.style.width = W+'px';
+    canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    if(state.molecules.length === 0) buildMolecules();
+    else repositionLattice();
+  }
+  function repositionLattice(){
+    const b = bounds();
+    const dx = (b.r-b.l)/COLS, dy = (b.b-b.t)/ROWS;
+    state.molecules.forEach((m,i)=>{
+      const col = i % COLS, row = (i/COLS)|0;
+      const off = (row%2 ? 1 : -1) * dx*0.16;
+      m.lx = b.l + dx*(col+0.5) + off;
+      m.ly = b.t + dy*(row+0.5);
+      m.x = clamp(m.x, b.l, b.r); m.y = clamp(m.y, b.t, b.b);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Mise à jour de la physique
+  // ---------------------------------------------------------------------------
+  function update(dt){
+    state.wave += dt;
+    state.electron += dt;
+    state.pulse += dt;
+
+    const b = bounds();
+    const oR = molSize();
+    const bound = oR*2.1; // rayon d'encombrement d'une molécule
+
+    for(const m of state.molecules){
+      if(state.isIce){
+        const k = clamp(9*dt, 0, 1);
+        m.x += (m.lx - m.x)*k;
+        m.y += (m.ly - m.y)*k;
+        let da = m.targetAngle - m.angle;
+        while(da >  Math.PI) da -= Math.PI*2;
+        while(da < -Math.PI) da += Math.PI*2;
+        m.angle += da*k;
+      } else {
+        m.x += m.vx*dt; m.y += m.vy*dt;
+        m.angle += m.va*dt;
+        if(m.x < b.l+bound){ m.x = b.l+bound; m.vx = Math.abs(m.vx); }
+        if(m.x > b.r-bound){ m.x = b.r-bound; m.vx = -Math.abs(m.vx); }
+        if(m.y < b.t+bound){ m.y = b.t+bound; m.vy = Math.abs(m.vy); }
+        if(m.y > b.b-bound){ m.y = b.b-bound; m.vy = -Math.abs(m.vy); }
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Dessin : une molécule d'eau réutilisable
+  // ---------------------------------------------------------------------------
+  function drawWaterMolecule(x, y, oR, angle, opts={}){
+    const hR = oR*0.6, bond = oR*1.55, spread = 0.92;
+    const h1x = x + Math.cos(angle-spread)*bond, h1y = y + Math.sin(angle-spread)*bond;
+    const h2x = x + Math.cos(angle+spread)*bond, h2y = y + Math.sin(angle+spread)*bond;
+
+    ctx.lineCap = 'round';
+    ctx.lineWidth = oR*0.42;
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(h1x,h1y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(h2x,h2y); ctx.stroke();
+
+    sphere(h1x,h1y,hR,COL.hydro);
+    sphere(h2x,h2y,hR,COL.hydro);
+    sphere(x,y,oR,COL.oxygen);
+
+    if(opts.labels){
+      const fs = oR*0.62;
+      ctx.font = `600 ${fs}px var(--font, sans-serif)`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(255,255,255,0.95)';
+      ctx.fillText('O', x, y+fs*0.05);
+      ctx.fillStyle='rgba(60,90,120,0.95)';
+      ctx.fillText('H', h1x, h1y+fs*0.03);
+      ctx.fillText('H', h2x, h2y+fs*0.03);
+    }
+    return {x,y,oR,h1x,h1y,h2x,h2y,hR};
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Niveau 0 — le verre d'eau / le glaçon 3D
+  // ---------------------------------------------------------------------------
+  function drawMacro(){
+    const cx = W/2, cy = H*0.46;
+    if(!state.isIce) drawGlassOfWater(cx, cy);
+    else drawIceCube(cx, cy);
+  }
+
+  // --- Un verre transparent rempli d'eau bleue, avec surface qui ondule ------
+  function drawGlassOfWater(cx, cy){
+    const S = Math.min(W,H);
+    const gh = S*0.52;                 // hauteur du verre
+    const topHalf = S*0.20;            // demi-largeur en haut
+    const botHalf = S*0.155;           // demi-largeur en bas (légèrement conique)
+    const ty = cy - gh/2, by = cy + gh/2;
+    const rimRy = topHalf*0.22;        // aplatissement des ellipses (perspective)
+    const halfAt = (y)=> lerp(topHalf, botHalf, (y-ty)/(by-ty));
+
+    // niveau de l'eau (~70% du verre) avec un léger bercement
+    const wTopY = ty + gh*0.30;
+    const wHalf = halfAt(wTopY);
+    const bob = Math.sin(state.wave*2.0)*rimRy*0.10;
+    const surfY = wTopY + bob;
+    const surfRy = rimRy*0.9;
+    const botRy = rimRy*0.75;
+
+    ctx.save();
+
+    // ombre au sol
+    ctx.fillStyle = 'rgba(40,100,150,0.15)';
+    ctx.beginPath(); ctx.ellipse(cx, by+rimRy*0.6, topHalf*1.05, rimRy*1.1, 0, 0, Math.PI*2); ctx.fill();
+
+    // teinte très légère du verre (partie vide au-dessus de l'eau)
+    ctx.beginPath();
+    ctx.moveTo(cx-topHalf, ty);
+    ctx.lineTo(cx-botHalf, by);
+    ctx.lineTo(cx+botHalf, by);
+    ctx.lineTo(cx+topHalf, ty);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(205,236,255,0.10)'; ctx.fill();
+
+    // --- corps de l'eau ---
+    const wg = ctx.createLinearGradient(0, surfY, 0, by);
+    wg.addColorStop(0, 'rgba(95,190,255,0.82)');
+    wg.addColorStop(1, 'rgba(20,120,220,0.92)');
+    ctx.beginPath();
+    ctx.ellipse(cx, surfY, wHalf, surfRy, 0, 0, Math.PI, false);   // ligne d'eau avant (droite→gauche)
+    ctx.lineTo(cx-botHalf, by);                                    // paroi gauche
+    ctx.ellipse(cx, by, botHalf, botRy, 0, Math.PI, 0, true);      // fond (gauche→avant→droite)
+    ctx.lineTo(cx+wHalf, surfY);                                   // paroi droite
+    ctx.closePath();
+    ctx.fillStyle = wg; ctx.fill();
+
+    // --- surface de l'eau (ellipse claire + ondulations) ---
+    ctx.beginPath(); ctx.ellipse(cx, surfY, wHalf, surfRy, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(155,222,255,0.55)'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.stroke();
+
+    // reflet brillant
+    ctx.beginPath();
+    ctx.ellipse(cx - wHalf*0.32, surfY - surfRy*0.12, wHalf*0.38, surfRy*0.4, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
+
+    // ondulations qui se propagent doucement
+    for(let i=0;i<2;i++){
+      const k = (state.wave*0.55 + i*0.5) % 1;
+      ctx.globalAlpha = 0.45*(1-k);
+      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath(); ctx.ellipse(cx, surfY, wHalf*(0.2+0.75*k), surfRy*(0.2+0.75*k), 0, 0, Math.PI*2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // --- parois du verre (translucides, par-dessus) ---
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx-topHalf, ty);
+    ctx.lineTo(cx-botHalf, by);
+    ctx.ellipse(cx, by, botHalf, botRy, 0, Math.PI, 0, true);      // fond visible
+    ctx.lineTo(cx+topHalf, ty);
+    ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, ty, topHalf, rimRy, 0, 0, Math.PI*2); ctx.stroke(); // rebord
+
+    // reflets verticaux du verre
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(cx-topHalf*0.6, ty+rimRy*1.5);
+    ctx.lineTo(cx-botHalf*0.6, by-botRy*1.3);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx-topHalf*0.4, ty+rimRy*1.7);
+    ctx.lineTo(cx-botHalf*0.4, by-botRy*1.5);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // --- Un glaçon en 3D (cube isométrique) ------------------------------------
+  function drawIceCube(cx, cy){
+    const S = Math.min(W,H);
+    const e = S*0.23;                 // longueur d'arête projetée
+    const dx = e*Math.cos(Math.PI/6); // décalage x d'une arête de fuite
+    const dy = e*Math.sin(Math.PI/6); // décalage y d'une arête de fuite
+    const vh = e*0.95;                // hauteur verticale du cube
+    const topY = cy - dy - vh/2;
+
+    // sommets visibles
+    const Bk = {x:cx,     y:topY};          // arrière-haut
+    const Rt = {x:cx+dx,  y:topY+dy};       // droite-haut
+    const Ft = {x:cx,     y:topY+2*dy};     // avant-haut
+    const Lt = {x:cx-dx,  y:topY+dy};       // gauche-haut
+    const Fb = {x:cx,     y:Ft.y+vh};       // avant-bas
+    const Lb = {x:cx-dx,  y:Lt.y+vh};       // gauche-bas
+    const Rb = {x:cx+dx,  y:Rt.y+vh};       // droite-bas
+
+    ctx.save();
+
+    // ombre au sol
+    ctx.fillStyle = 'rgba(60,120,170,0.18)';
+    ctx.beginPath(); ctx.ellipse(cx, Fb.y+dy*0.35, e*1.0, dy*0.7, 0, 0, Math.PI*2); ctx.fill();
+
+    const face = (pts, c1, c2)=>{
+      const g = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[2].x, pts[2].y);
+      g.addColorStop(0, c1); g.addColorStop(1, c2);
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+    };
+
+    // faces : dessus clair, gauche moyen, droite plus sombre → effet 3D
+    face([Lt,Ft,Fb,Lb], 'rgba(180,227,255,0.96)', 'rgba(120,190,240,0.96)'); // gauche
+    face([Rt,Ft,Fb,Rb], 'rgba(140,205,245,0.96)', 'rgba(90,160,220,0.96)');  // droite
+    face([Bk,Rt,Ft,Lt], 'rgba(242,251,255,0.98)', 'rgba(200,235,255,0.98)'); // dessus
+
+    // arêtes givrées
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2.5;
+    const edge=(a,b)=>{ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); };
+    edge(Bk,Rt); edge(Rt,Ft); edge(Ft,Lt); edge(Lt,Bk);  // dessus
+    edge(Lt,Lb); edge(Ft,Fb); edge(Rt,Rb);               // arêtes verticales
+    edge(Lb,Fb); edge(Fb,Rb);                            // bas avant
+
+    // reflet lumineux sur le dessus
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(lerp(Bk.x,Lt.x,0.28), lerp(Bk.y,Lt.y,0.28));
+    ctx.lineTo(lerp(Bk.x,Ft.x,0.32), lerp(Bk.y,Ft.y,0.32));
+    ctx.lineTo(lerp(Ft.x,Lt.x,0.5),  lerp(Ft.y,Lt.y,0.5));
+    ctx.closePath(); ctx.fill();
+
+    // petits scintillements
+    const sp = [[Lt,Fb,0.5,0.35],[Rt,Fb,0.55,0.5],[Bk,Ft,0.4,0.25]];
+    for(let i=0;i<sp.length;i++){
+      const tw = (Math.sin(state.wave*3 + i*2)*0.5+0.5);
+      const A = sp[i][0], B = sp[i][1];
+      const px = lerp(A.x,B.x,sp[i][2]), py = lerp(A.y,B.y,sp[i][3]);
+      const r = e*0.03*(0.6+tw);
+      ctx.fillStyle = `rgba(255,255,255,${0.5+0.5*tw})`;
+      ctx.beginPath();
+      ctx.moveTo(px, py-r*2); ctx.lineTo(px+r, py); ctx.lineTo(px, py+r*2); ctx.lineTo(px-r, py);
+      ctx.closePath(); ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Niveau 1 — les molécules
+  // ---------------------------------------------------------------------------
+  function drawMolecules(){
+    const oR = molSize();
+    // léger halo d'eau derrière quand c'est liquide
+    if(!state.isIce){
+      const b = bounds();
+      ctx.save();
+      ctx.fillStyle = 'rgba(120,200,255,0.14)';
+      roundRect(b.l-oR, b.t-oR, (b.r-b.l)+oR*2, (b.b-b.t)+oR*2, oR*2); ctx.fill();
+      ctx.restore();
+    }
+    // liaisons du cristal (traits fins entre voisins) en mode glace
+    if(state.isIce){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(120,180,230,0.35)'; ctx.lineWidth = 2;
+      const ms = state.molecules;
+      for(let i=0;i<ms.length;i++){
+        for(let j=i+1;j<ms.length;j++){
+          const dx=ms[i].x-ms[j].x, dy=ms[i].y-ms[j].y;
+          const d = Math.hypot(dx,dy);
+          if(d < oR*7){ ctx.globalAlpha = clamp(1-(d/(oR*7)),0,1)*0.5; ctx.beginPath(); ctx.moveTo(ms[i].x,ms[i].y); ctx.lineTo(ms[j].x,ms[j].y); ctx.stroke(); }
+        }
+      }
+      ctx.globalAlpha=1; ctx.restore();
+    }
+
+    state.molecules.forEach((m,i)=>{
+      drawWaterMolecule(m.x, m.y, oR, m.angle);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Niveau 2 — une seule molécule
+  // ---------------------------------------------------------------------------
+  function moleculeGeom(){
+    const cx = W/2, cy = H*0.44;
+    const oR = Math.min(W,H)*0.13;
+    // petit tremblement si liquide, immobile si glace
+    const wob = state.isIce ? 0 : Math.sin(state.wave*2.2)*oR*0.03;
+    return { cx: cx+wob, cy: cy+Math.cos(state.wave*1.8)* (state.isIce?0:oR*0.02), oR, angle:-Math.PI/2 };
+  }
+  function drawSingleMolecule(){
+    const g = moleculeGeom();
+    // on ne met plus les lettres O/H au centre : on y superpose la structure interne
+    const geo = drawWaterMolecule(g.cx, g.cy, g.oR, g.angle);
+
+    // aperçu transparent de l'intérieur des atomes (lien vers l'échelle suivante)
+    drawAtomOverlay(g.cx, g.cy, g.oR, 'O');
+    drawAtomOverlay(geo.h1x, geo.h1y, geo.hR, 'H');
+    drawAtomOverlay(geo.h2x, geo.h2y, geo.hR, 'H');
+
+    // étiquettes texte
+    ctx.font = `600 ${g.oR*0.32}px var(--font, sans-serif)`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = COL.oxygen;
+    ctx.fillText('oxygène', g.cx, g.cy + g.oR*1.55);
+    ctx.fillStyle = '#4a86c0';
+    ctx.fillText('hydrogène', geo.h1x - g.oR*0.2, geo.h1y - g.oR*1.1);
+    ctx.fillText('hydrogène', geo.h2x + g.oR*0.2, geo.h2y - g.oR*1.1);
+  }
+
+  // Structure atomique en filigrane, dessinée À L'INTÉRIEUR de la boule de l'atome.
+  // Petit noyau (protons + neutrons) + électrons qui gravitent près du bord.
+  function drawAtomOverlay(x, y, Rs, element){
+    const isO = (element === 'O');
+    ctx.save();
+    circle(x, y, Rs*0.97); ctx.clip();      // reste dans la boule
+    ctx.globalAlpha *= 0.5;                  // léger effet de transparence, ET suit le fondu du zoom
+
+    // --- orbites (près du bord de la boule) ---
+    const shells = isO
+      ? [{ r:Rs*0.55, e:2, sp:1.3 }, { r:Rs*0.85, e:6, sp:0.8 }]
+      : [{ r:Rs*0.70, e:1, sp:1.0 }];
+    ctx.lineWidth = Math.max(1, Rs*0.02);
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    shells.forEach(s=>{ ctx.beginPath(); ctx.arc(x, y, s.r, 0, Math.PI*2); ctx.stroke(); });
+
+    // --- noyau compact ---
+    const rn = isO ? Rs*0.055 : Rs*0.16;     // rayon d'un nucléon
+    if(isO){
+      const golden = Math.PI*(3-Math.sqrt(5));
+      const c = rn*0.82, spin = state.wave*0.06;
+      const list = []; let pUsed=0, nUsed=0;
+      for(let i=0;i<16;i++){
+        const rr = c*Math.sqrt(i+0.35), a = i*golden + spin;
+        let kind;
+        if(i%2===0 && pUsed<8){ kind='p'; pUsed++; }
+        else if(nUsed<8){ kind='n'; nUsed++; }
+        else { kind='p'; pUsed++; }
+        list.push({ x:x+Math.cos(a)*rr, y:y+Math.sin(a)*rr, kind });
+      }
+      // neutrons derrière, protons devant
+      list.filter(n=>n.kind==='n').forEach(n=>{ ctx.fillStyle='rgba(120,130,145,0.9)'; circle(n.x,n.y,rn); ctx.fill(); });
+      list.filter(p=>p.kind==='p').forEach(p=>{
+        ctx.fillStyle='rgba(255,95,100,0.95)'; circle(p.x,p.y,rn); ctx.fill();
+        ctx.lineWidth=Math.max(0.8,rn*0.18); ctx.strokeStyle='rgba(255,255,255,0.7)'; circle(p.x,p.y,rn); ctx.stroke();
+      });
+    } else {
+      // hydrogène : 1 proton
+      ctx.fillStyle='rgba(255,95,100,0.95)'; circle(x,y,rn); ctx.fill();
+      ctx.lineWidth=Math.max(0.8,rn*0.16); ctx.strokeStyle='rgba(255,255,255,0.75)'; circle(x,y,rn); ctx.stroke();
+    }
+
+    // --- électrons qui gravitent ---
+    const er = Math.max(2, Rs*0.07);
+    shells.forEach((s, si)=>{
+      for(let i=0;i<s.e;i++){
+        const a = state.electron*s.sp*(si%2?-1:1) + (i/s.e)*Math.PI*2;
+        const ex = x + Math.cos(a)*s.r, ey = y + Math.sin(a)*s.r;
+        const gl = ctx.createRadialGradient(ex,ey,0,ex,ey,er*1.8);
+        gl.addColorStop(0,'rgba(120,200,255,0.8)'); gl.addColorStop(1,'rgba(120,200,255,0)');
+        ctx.fillStyle=gl; circle(ex,ey,er*1.8); ctx.fill();
+        ctx.fillStyle='rgba(220,240,255,0.98)'; circle(ex,ey,er); ctx.fill();
+      }
+    });
+
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Niveau 3 — un atome
+  // ---------------------------------------------------------------------------
+  function drawAtom(el){
+    const cx = W/2, cy = H*0.45;
+    const R = Math.min(W,H);
+    let shells, nucleus;
+    if(el === 'H'){
+      shells = [{ r:R*0.30, count:1, speed:1.0 }];
+      nucleus = { p:1, n:0 };
+    } else {
+      shells = [{ r:R*0.19, count:2, speed:1.3 }, { r:R*0.33, count:6, speed:0.8 }];
+      nucleus = { p:8, n:8 };
+    }
+
+    // orbites
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.5;
+    shells.forEach(s=>{ ctx.beginPath(); ctx.arc(cx,cy,s.r,0,Math.PI*2); ctx.stroke(); });
+
+    // NOYAU : agrégat compact de protons + neutrons "collés" ensemble
+    const pr = R*0.030;                 // rayon d'un nucléon
+    const total = nucleus.p + nucleus.n;
+
+    if(total === 1){
+      // hydrogène : un seul proton, un peu plus gros pour la présence
+      const halo1 = ctx.createRadialGradient(cx,cy,0,cx,cy,pr*3);
+      halo1.addColorStop(0,'rgba(255,180,120,0.35)'); halo1.addColorStop(1,'rgba(255,180,120,0)');
+      ctx.fillStyle = halo1; circle(cx,cy,pr*3); ctx.fill();
+      drawNucleon(cx, cy, pr*1.3, 'p');
+    } else {
+      // placement phyllotaxique très serré → aspect "amas collé"
+      const golden = Math.PI*(3-Math.sqrt(5));
+      const c = pr*0.82;                // petit facteur = nucléons rapprochés/superposés
+      const spin = state.wave*0.06;     // rotation très lente (reste facile à compter)
+      const nucList = [];
+      let pUsed = 0, nUsed = 0;
+      for(let i=0;i<total;i++){
+        const rr = c*Math.sqrt(i+0.35);
+        const a = i*golden + spin;
+        const x = cx + Math.cos(a)*rr;
+        const y = cy + Math.sin(a)*rr;
+        // alterne p/n pour bien répartir les protons dans tout l'amas
+        let kind;
+        if(i%2===0 && pUsed<nucleus.p){ kind='p'; pUsed++; }
+        else if(nUsed<nucleus.n){ kind='n'; nUsed++; }
+        else { kind='p'; pUsed++; }
+        nucList.push({x,y,kind});
+      }
+
+      // halo doux dimensionné sur l'amas
+      const clusterR = c*Math.sqrt(total) + pr;
+      const halo = ctx.createRadialGradient(cx,cy,0,cx,cy,clusterR*1.25);
+      halo.addColorStop(0,'rgba(255,180,120,0.35)');
+      halo.addColorStop(1,'rgba(255,180,120,0)');
+      ctx.fillStyle = halo; circle(cx,cy,clusterR*1.25); ctx.fill();
+
+      // neutrons d'abord (derrière, peuvent être partiellement masqués),
+      // puis les protons par-dessus → toujours comptables
+      nucList.filter(n=>n.kind==='n').forEach(n=> drawNucleon(n.x,n.y,pr,'n'));
+      nucList.filter(p=>p.kind==='p').forEach(p=> drawNucleon(p.x,p.y,pr,'p'));
+    }
+
+    // ÉLECTRONS sur les orbites
+    shells.forEach((s, si)=>{
+      for(let i=0;i<s.count;i++){
+        const a = state.electron*s.speed*(si%2?-1:1) + (i/s.count)*Math.PI*2;
+        const ex = cx + Math.cos(a)*s.r;
+        const ey = cy + Math.sin(a)*s.r;
+        // traînée lumineuse
+        const gl = ctx.createRadialGradient(ex,ey,0,ex,ey,pr*1.6);
+        gl.addColorStop(0,'rgba(120,200,255,0.6)'); gl.addColorStop(1,'rgba(120,200,255,0)');
+        ctx.fillStyle = gl; circle(ex,ey,pr*1.6); ctx.fill();
+        sphere(ex, ey, pr*0.78, COL.electron);
+        ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.font=`700 ${pr*0.9}px var(--font,sans-serif)`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('−', ex, ey);
+      }
+    });
+    ctx.restore();
+  }
+  function drawNucleon(x,y,r,kind){
+    if(kind==='p'){
+      sphere(x,y,r,COL.proton);
+      // contour discret : sépare les protons qui se chevauchent
+      ctx.lineWidth = Math.max(1, r*0.09);
+      ctx.strokeStyle = 'rgba(120,25,25,0.4)';
+      circle(x,y,r); ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,0.98)'; ctx.font=`700 ${r*1.15}px var(--font,sans-serif)`;
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('+', x, y);
+    } else {
+      sphere(x,y,r,COL.neutron);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Dispatch de dessin d'un niveau
+  // ---------------------------------------------------------------------------
+  function drawLevel(level){
+    if(level===LEVEL.MACRO) drawMacro();
+    else if(level===LEVEL.MOLECULES) drawMolecules();
+    else if(level===LEVEL.MOLECULE) drawSingleMolecule();
+    else if(level===LEVEL.ATOM) drawAtom(state.atomEl);
+  }
+
+  function drawLevelTransformed(level, alpha, scale, cx, cy){
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.translate(cx, cy); ctx.scale(scale, scale); ctx.translate(-cx, -cy);
+    drawLevel(level);
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Fond
+  // ---------------------------------------------------------------------------
+  function drawBackground(fromLvl, toLvl, m){
+    const top = lerpHex(BG[fromLvl][0], BG[toLvl][0], m);
+    const bot = lerpHex(BG[fromLvl][1], BG[toLvl][1], m);
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0, top); g.addColorStop(1, bot);
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+    // petites étoiles douces quand on est dans l'atome
+    const atomFactor = lerp(fromLvl===3?1:0, toLvl===3?1:0, m);
+    if(atomFactor > 0.02){
+      ctx.save(); ctx.globalAlpha = atomFactor*0.8;
+      for(let i=0;i<26;i++){
+        const sx = ((i*97)%100)/100*W;
+        const sy = ((i*57)%100)/100*H;
+        const tw = (Math.sin(state.wave*2 + i)*0.5+0.5);
+        ctx.fillStyle = `rgba(255,255,255,${0.15+0.5*tw})`;
+        circle(sx, sy, 1.2+tw*1.3); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Boucle d'animation
+  // ---------------------------------------------------------------------------
+  let last = performance.now();
+  function frame(now){
+    let dt = (now-last)/1000; last = now;
+    dt = Math.min(dt, 0.05);
+    update(dt);
+
+    if(trans.active){
+      trans.t += dt;
+      const raw = clamp(trans.t/trans.dur, 0, 1);
+      const e = easeInOut(raw);
+      drawBackground(trans.from, trans.to, e);
+
+      if(trans.dir==='in'){
+        drawLevelTransformed(trans.from, 1-e, 1+e*1.8, trans.fx, trans.fy);
+        drawLevelTransformed(trans.to, e, 0.4+e*0.6, W/2, H*0.45);
+      } else {
+        drawLevelTransformed(trans.from, 1-e, 1-e*0.6, W/2, H*0.45);
+        drawLevelTransformed(trans.to, e, 1.8-e*0.8, W/2, H*0.45);
+      }
+
+      if(raw>=1){ trans.active=false; state.level=trans.to; }
+    } else {
+      drawBackground(state.level, state.level, 0);
+      drawLevel(state.level);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Navigation (zoom in / out)
+  // ---------------------------------------------------------------------------
+  function zoomIn(toLevel, fx, fy){
+    if(trans.active) return;
+    trans.active=true; trans.from=state.level; trans.to=toLevel;
+    trans.dir='in'; trans.t=0; trans.fx=fx; trans.fy=fy;
+    updateUI(toLevel);
+  }
+  function zoomOut(){
+    if(trans.active || state.level===LEVEL.MACRO) return;
+    trans.active=true; trans.from=state.level; trans.to=state.level-1;
+    trans.dir='out'; trans.t=0; trans.fx=W/2; trans.fy=H/2;
+    updateUI(state.level-1);
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Interaction tactile sur la scène
+  // ---------------------------------------------------------------------------
+  function onTap(px, py){
+    if(trans.active) return;
+    const lvl = state.level;
+
+    if(lvl===LEVEL.MACRO){
+      zoomIn(LEVEL.MOLECULES, px, py);
+
+    } else if(lvl===LEVEL.MOLECULES){
+      // molécule la plus proche du doigt
+      const oR = molSize();
+      let best=null, bd=1e9;
+      for(const m of state.molecules){
+        const d = Math.hypot(m.x-px, m.y-py);
+        if(d<bd){ bd=d; best=m; }
+      }
+      if(best && bd < oR*4.5){ zoomIn(LEVEL.MOLECULE, best.x, best.y); }
+
+    } else if(lvl===LEVEL.MOLECULE){
+      const g = moleculeGeom();
+      const geo = drawGeomOnly(g);
+      const dO = Math.hypot(geo.x-px, geo.y-py);
+      const dH1 = Math.hypot(geo.h1x-px, geo.h1y-py);
+      const dH2 = Math.hypot(geo.h2x-px, geo.h2y-py);
+      const minD = Math.min(dO, dH1, dH2);
+      if(minD > g.oR*2.2) return; // touche à côté
+      if(dO <= dH1 && dO <= dH2){ state.atomEl='O'; zoomIn(LEVEL.ATOM, geo.x, geo.y); }
+      else if(dH1 <= dH2){ state.atomEl='H'; zoomIn(LEVEL.ATOM, geo.h1x, geo.h1y); }
+      else { state.atomEl='H'; zoomIn(LEVEL.ATOM, geo.h2x, geo.h2y); }
+    }
+  }
+  // recalcule seulement la géométrie (sans dessiner) pour le hit-test
+  function drawGeomOnly(g){
+    const oR=g.oR, hR=oR*0.6, bond=oR*1.55, spread=0.92, a=g.angle;
+    return {
+      x:g.cx, y:g.cy, oR, hR,
+      h1x:g.cx+Math.cos(a-spread)*bond, h1y:g.cy+Math.sin(a-spread)*bond,
+      h2x:g.cx+Math.cos(a+spread)*bond, h2y:g.cy+Math.sin(a+spread)*bond,
+    };
+  }
+
+  function pointerPos(e){
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x:(t.clientX-r.left), y:(t.clientY-r.top) };
+  }
+  canvas.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    const p = pointerPos(e);
+    onTap(p.x, p.y);
+  }, {passive:false});
+
+  // ---------------------------------------------------------------------------
+  //  Textes & boutons
+  // ---------------------------------------------------------------------------
+  const CAPTIONS = {
+    macroLiquid: `<span class="lead">💧 Voici de l'eau&nbsp;!</span> Touche l'eau pour la regarder de tout, tout près.`,
+    macroIce:    `<span class="lead">❄️ L'eau a gelé&nbsp;!</span> Elle est devenue de la glace toute dure. Touche la glace pour regarder à l'intérieur.`,
+    molLiquid:   `L'eau est faite de plein de <b>minuscules molécules</b> qui flottent et bougent. Touche une molécule&nbsp;!`,
+    molIce:      `Dans la glace, les molécules se <b>rangent bien en ordre</b> et ne bougent presque plus. Touche une molécule&nbsp;!`,
+    molecule:    `Une <b>molécule d'eau</b> = 2 petits atomes d'<b>hydrogène</b> et 1 gros atome d'<b>oxygène</b>. Touche un atome&nbsp;!`,
+    atomH:       `<span class="lead">Atome d'hydrogène</span> — au centre&nbsp;: 1 <b>proton</b> (+). Autour&nbsp;: 1 <b>électron</b> (−) qui tourne. C'est le plus petit atome&nbsp;!`,
+    atomO:       `<span class="lead">Atome d'oxygène</span> — au centre&nbsp;: 8 <b>protons</b> (+) et 8 <b>neutrons</b>. Autour&nbsp;: 8 <b>électrons</b> (−) qui tournent.`,
+  };
+
+  function captionFor(level){
+    if(level===LEVEL.MACRO)     return state.isIce ? CAPTIONS.macroIce : CAPTIONS.macroLiquid;
+    if(level===LEVEL.MOLECULES) return state.isIce ? CAPTIONS.molIce : CAPTIONS.molLiquid;
+    if(level===LEVEL.MOLECULE)  return CAPTIONS.molecule;
+    if(level===LEVEL.ATOM)      return state.atomEl==='O' ? CAPTIONS.atomO : CAPTIONS.atomH;
+    return '';
+  }
+
+  function updateUI(level = state.level){
+    // bouton gel
+    freezeLabel.textContent = state.isIce ? '💧 Eau liquide' : '❄️ Glace';
+    // bouton retour
+    backBtn.classList.toggle('show', level > LEVEL.MACRO);
+    // légende
+    legendEl.classList.toggle('show', level === LEVEL.ATOM);
+    // texte (fondu doux)
+    captionEl.style.opacity = 0;
+    setTimeout(()=>{ captionEl.innerHTML = captionFor(level); captionEl.style.opacity = 1; }, 130);
+  }
+
+  freezeBtn.addEventListener('click', ()=>{
+    const willBeIce = !state.isIce;
+    state.isIce = willBeIce;
+    if(!willBeIce){
+      // fondre : redonne une petite vitesse aux molécules
+      for(const m of state.molecules){
+        m.vx = (Math.random()*2-1)*80; m.vy = (Math.random()*2-1)*80;
+        m.va = (Math.random()*2-1)*1.1;
+      }
+    }
+    // met à jour texte immédiatement (sans changer de niveau)
+    freezeLabel.textContent = state.isIce ? '💧 Eau liquide' : '❄️ Glace';
+    const targetLevel = trans.active ? trans.to : state.level;
+    captionEl.innerHTML = captionFor(targetLevel);
+  });
+
+  backBtn.addEventListener('click', ()=> zoomOut());
+
+  // Empêche le zoom par double-tap sur iOS
+  document.addEventListener('gesturestart', e=>e.preventDefault());
+  let lastTouch = 0;
+  document.addEventListener('touchend', e=>{
+    const n = Date.now();
+    if(n - lastTouch < 300) e.preventDefault();
+    lastTouch = n;
+  }, {passive:false});
+
+  // ---------------------------------------------------------------------------
+  //  Démarrage
+  // ---------------------------------------------------------------------------
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', ()=> setTimeout(resize, 200));
+  resize();
+  updateUI();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
