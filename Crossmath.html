@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Grilles de calcul</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1f2733;
+    --ink-soft:#6b7686;
+    --paper:#ffffff;
+    --bg:#eef1f8;
+    --line:#d6dcea;
+    --accent:#4f6df5;
+    --accent-dark:#3a52d6;
+    --ok:#1f9d63;
+    --ok-bg:#e4f6ec;
+    --bad:#e05353;
+    --bad-bg:#fcebeb;
+    --gold:#f2a71b;
+    --radius:14px;
+    --op:#98a2b5;
+    --font:"Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:var(--font);
+    color:var(--ink);
+    background-color:var(--bg);
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:26px 26px;
+    background-position:-1px -1px;
+    display:flex;flex-direction:column;min-height:100%;
+    -webkit-text-size-adjust:100%;
+  }
+  /* ---------- header ---------- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:14px 18px;background:rgba(255,255,255,.82);backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;flex-direction:column;line-height:1.05;text-align:center;flex:1}
+  .brand b{font-weight:800;font-size:18px;letter-spacing:.2px}
+  .brand span{font-size:12px;color:var(--ink-soft);font-weight:600}
+  .iconbtn{
+    display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink);
+    padding:10px 14px;border-radius:12px;font-family:var(--font);font-weight:700;font-size:14px;
+    min-height:44px;transition:transform .06s ease,background .15s ease,border-color .15s;
+    white-space:nowrap;
+  }
+  .iconbtn:hover{background:#f4f6fd;border-color:#c3cbe0}
+  .iconbtn:active{transform:scale(.97)}
+  .iconbtn svg{width:20px;height:20px;display:block}
+  .iconbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .iconbtn.primary:hover{background:var(--accent-dark);border-color:var(--accent-dark)}
+  .label-lg{display:inline}
+  @media(max-width:560px){.label-lg{display:none}.iconbtn{padding:10px 12px}}
+
+  /* ---------- main ---------- */
+  main{flex:1;display:flex;flex-direction:column;align-items:center;padding:18px 14px 28px;gap:16px}
+  #boardWrap{width:100%;max-width:1100px;overflow:auto;display:flex;justify-content:center;padding:6px}
+  #board{position:relative}
+  .cell{position:absolute;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .cell.num,.cell.blank{background:var(--paper);border:2px solid var(--ink);border-radius:6px}
+  .cell.num{color:var(--ink)}
+  .cell.op{color:var(--op);font-weight:800}
+  .cell.blank{padding:0}
+  .cell.blank input{
+    width:100%;height:100%;border:none;background:transparent;text-align:center;
+    font-family:var(--font);font-weight:800;color:var(--accent);padding:0;border-radius:6px;
+    -moz-appearance:textfield;
+  }
+  .cell.blank input:focus{outline:none;background:#eef2ff}
+  .cell.blank input::-webkit-outer-spin-button,.cell.blank input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .cell.blank.ok{border-color:var(--ok);background:var(--ok-bg)}
+  .cell.blank.ok input{color:var(--ok)}
+  .cell.blank.bad{border-color:var(--bad);background:var(--bad-bg)}
+  .cell.blank.bad input{color:var(--bad)}
+  .cell.blank.revealed{border-color:var(--ink);background:#fff8e6}
+  .cell.blank.revealed input{color:var(--gold)}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;max-width:1100px}
+  .msg{min-height:26px;font-weight:800;font-size:16px;text-align:center;width:100%}
+  .msg.good{color:var(--ok)}
+  .msg.warn{color:var(--bad)}
+  .sep{width:1px;height:28px;background:var(--line);margin:0 2px}
+  .batchbox{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:6px 10px}
+  .batchbox label{font-weight:700;font-size:13px;color:var(--ink-soft)}
+  .batchbox input[type=number]{width:56px}
+  input[type=number],select{
+    font-family:var(--font);font-weight:700;font-size:15px;color:var(--ink);
+    border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--paper);min-height:40px;
+  }
+  input[type=number]:focus,select:focus{outline:none;border-color:var(--accent)}
+  .check-toggle{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:var(--ink-soft);cursor:pointer;user-select:none}
+  .check-toggle input{width:18px;height:18px;accent-color:var(--accent)}
+
+  /* ---------- modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(20,26,40,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .overlay.show{display:flex}
+  .modal{
+    background:var(--paper);border-radius:20px;width:100%;max-width:520px;max-height:92vh;overflow:auto;
+    box-shadow:0 24px 60px rgba(20,26,40,.28);
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px 6px}
+  .modal-head h2{margin:0;font-size:20px;font-weight:800}
+  .modal-body{padding:8px 22px 4px;display:flex;flex-direction:column;gap:6px}
+  .modal-foot{padding:16px 22px 22px;display:flex;gap:10px;justify-content:flex-end}
+  .field{padding:12px 0;border-bottom:1px solid var(--line)}
+  .field:last-of-type{border-bottom:none}
+  .field-title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px}
+  .field-title input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+  .field .hint{color:var(--ink-soft);font-size:12.5px;font-weight:600;margin-top:2px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .grid2 .col{display:flex;flex-direction:column;gap:4px}
+  .grid2 label{font-size:12.5px;font-weight:700;color:var(--ink-soft)}
+  .row-inline{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800;font-size:15px}
+  .closex{border:none;background:transparent;cursor:pointer;color:var(--ink-soft);padding:6px;border-radius:8px;line-height:0}
+  .closex:hover{background:#f1f3f9}
+  .opset-disabled{opacity:.45;pointer-events:none}
+
+  /* ---------- generating overlay ---------- */
+  .gen{position:fixed;inset:0;background:rgba(255,255,255,.72);display:none;align-items:center;justify-content:center;z-index:60;flex-direction:column;gap:14px}
+  .gen.show{display:flex}
+  .spinner{width:44px;height:44px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .gen p{font-weight:800;color:var(--ink)}
+
+  /* ---------- print ---------- */
+  #printArea{display:none}
+  @media print{
+    body{background:#fff}
+    header,main,.overlay,.gen{display:none !important}
+    #printArea{display:block}
+    .print-page{page-break-after:always;padding:6mm 4mm;display:flex;flex-direction:column;align-items:center}
+    .print-page:last-child{page-break-after:auto}
+    .print-title{font-weight:800;font-size:16px;margin:0 0 6mm;color:#111}
+    .p-board{position:relative}
+    .p-cell{position:absolute;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-weight:700}
+    .p-cell.num,.p-cell.blank{border:1.6px solid #111;border-radius:4px;background:#fff}
+    .p-cell.op{color:#111;font-weight:800}
+    .p-cell.blank{background:#fff}
+    .p-key{color:#c94a4a}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="iconbtn primary" id="newBtn" title="Nouvelle grille" aria-label="Nouvelle grille">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2M21 12a9 9 0 0 1-15.5 6.2"/><path d="M18 3v3h-3M6 21v-3h3"/></svg>
+    <span class="label-lg">Nouvelle grille</span>
+  </button>
+  <div class="brand"><b>Grilles de calcul</b><span>Remplis les cases blanches</span></div>
+  <button class="iconbtn" id="setBtn" title="Paramètres" aria-label="Paramètres">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+    <span class="label-lg">Paramètres</span>
+  </button>
+</header>
+
+<main>
+  <div id="boardWrap"><div id="board"></div></div>
+  <div class="msg" id="msg"></div>
+  <div class="controls">
+    <button class="iconbtn primary" id="checkBtn">Vérifier</button>
+    <button class="iconbtn" id="clearBtn">Effacer</button>
+    <button class="iconbtn" id="solveBtn">Solution</button>
+  </div>
+</main>
+
+<!-- settings modal -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <h2 id="modalTitle">Paramètres</h2>
+      <button class="closex" id="closeBtn" aria-label="Fermer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="field">
+        <div class="field-title"><input type="checkbox" id="mulOn"> Multiplication</div>
+        <div class="hint">Les opérandes peuvent être de chaque côté du signe ×.</div>
+        <div class="grid2" id="mulFields">
+          <div class="col"><label>Opérande 1 — max</label><input type="number" id="mulOp1" min="2" max="99" value="4"></div>
+          <div class="col"><label>Opérande 2 — max</label><input type="number" id="mulOp2" min="2" max="99" value="10"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-title"><input type="checkbox" id="divOn"> Division</div>
+        <div class="hint">Résultat toujours entier. Opérande 1 = gauche (dividende), opérande 2 = droite (diviseur).</div>
+        <div class="grid2" id="divFields">
+          <div class="col"><label>Opérande 1 — max (gauche)</label><input type="number" id="divOp1" min="2" max="99" value="40"></div>
+          <div class="col"><label>Opérande 2 — max (droite)</label><input type="number" id="divOp2" min="2" max="20" value="3"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="row-inline"><span>Valeur maximale (plafond)</span><input type="number" id="ceiling" min="6" max="99" value="40" style="width:96px"></div>
+        <div class="hint">Aucun nombre de la grille ne dépasse cette valeur. Les additions et soustractions sont toujours incluses.</div>
+      </div>
+
+      <div class="field">
+        <div class="row-inline"><span>Taille de la grille</span>
+          <select id="gridSize" style="width:120px">
+            <option value="9">9 × 9</option>
+            <option value="12" selected>12 × 12</option>
+            <option value="15">15 × 15</option>
+            <option value="25">25 × 25</option>
+            <option value="50">50 × 50</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="row-inline"><span>Remplissage de la grille (%)</span><input type="number" id="fill" min="0" max="100" value="100" style="width:96px"></div>
+        <div class="hint">100 % = grille bien remplie. Une valeur plus basse laisse plus de vide (grille clairsemée, moins d'opérations).</div>
+      </div>
+
+      <div class="field">
+        <div class="row-inline"><span>Densité de cases vides (%)</span><input type="number" id="density" min="10" max="80" value="45" style="width:96px"></div>
+        <div class="hint">Proportion de cases que l'enfant doit remplir.</div>
+      </div>
+
+    </div>
+    <div class="modal-foot" style="justify-content:space-between">
+      <button class="iconbtn" id="openPrintBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></svg>
+        <span>Imprimer…</span>
+      </button>
+      <div style="display:flex;gap:10px">
+        <button class="iconbtn" id="cancelBtn">Annuler</button>
+        <button class="iconbtn primary" id="saveBtn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- print sub-dialog -->
+<div class="overlay" id="printOverlay" style="z-index:55">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="printTitle" style="max-width:440px">
+    <div class="modal-head">
+      <h2 id="printTitle">Imprimer</h2>
+      <button class="closex" id="printClose" aria-label="Fermer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <div class="row-inline"><span>Grille actuelle</span>
+          <button class="iconbtn primary" id="printCurBtn">Imprimer cette grille</button></div>
+        <div class="hint">Imprime la grille affichée à l'écran (cases vides).</div>
+      </div>
+      <div class="field">
+        <div class="row-inline"><span>Lot de grilles</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="pbatchN" min="5" max="20" value="10" style="width:74px">
+            <button class="iconbtn primary" id="printBatchBtn">Imprimer le lot</button>
+          </div>
+        </div>
+        <label class="check-toggle" style="margin-top:10px"><input type="checkbox" id="pbatchKey">Ajouter les corrigés</label>
+        <div class="hint">Génère de nouvelles grilles (5 à 20) avec les réglages ci-dessus.</div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="iconbtn" id="printBack">Retour</button></div>
+  </div>
+</div>
+
+<div class="gen" id="genOverlay"><div class="spinner"></div><p id="genMsg">Génération…</p></div>
+
+<div id="printArea"></div>
+
+<script>
+/* ============================ GENERATOR ============================ */
+const MINV = 2;
+function randint(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+function choice(a){return a[Math.floor(Math.random()*a.length)];}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function allowedOps(P){const o=['+','-'];if(P.mul)o.push('*');if(P.div)o.push('/');return o;}
+function validMul(x,y,P){if(x<MINV||y<MINV)return false;if(x*y>P.ceiling)return false;return (x<=P.mulOp1Max&&y<=P.mulOp2Max)||(y<=P.mulOp1Max&&x<=P.mulOp2Max);}
+function divTop(P){return Math.min(P.divOp1Max,P.ceiling);}
+function eqOk(a,op,b,c,P){
+  if(![a,b,c].every(v=>Number.isInteger(v)&&v>=MINV&&v<=P.ceiling))return false;
+  if(op==='+')return a+b===c;
+  if(op==='-')return a-b===c&&a>b;
+  if(op==='*')return a*b===c&&validMul(a,b,P);
+  if(op==='/')return b!==0&&a===b*c&&a%b===0&&a<=divTop(P)&&b<=P.divOp2Max&&b>=MINV&&c>=MINV;
+  return false;
+}
+function genFree(P){
+  const ops=allowedOps(P);
+  for(let t=0;t<1200;t++){
+    const op=choice(ops);let a,b,c;
+    if(op==='+'){const hi=Math.min(15,P.ceiling-MINV);if(hi<MINV)continue;a=randint(MINV,hi);b=randint(MINV,Math.min(hi,P.ceiling-a));c=a+b;}
+    else if(op==='-'){a=randint(MINV+2,P.ceiling);b=randint(MINV,a-MINV);c=a-b;}
+    else if(op==='*'){let f1=randint(MINV,P.mulOp1Max),f2=randint(MINV,P.mulOp2Max);if(Math.random()<0.5){const t=f1;f1=f2;f2=t;}a=f1;b=f2;c=a*b;if(!validMul(a,b,P))continue;}
+    else{const bmax=Math.min(P.divOp2Max,divTop(P));if(bmax<MINV)continue;b=randint(MINV,bmax);const cmax=Math.floor(divTop(P)/b);if(cmax<MINV)continue;c=randint(MINV,Math.min(cmax,P.ceiling));a=b*c;}
+    if(eqOk(a,op,b,c,P))return[a,op,b,c];
+  }
+  return null;
+}
+function completeFixed(idx,V,P){
+  if(V<MINV||V>P.ceiling)return null;
+  const ops=shuffle(allowedOps(P).slice());
+  for(let t=0;t<1500;t++){
+    const op=choice(ops);let a,b,c;
+    if(op==='+'){
+      if(idx===0){const hi=P.ceiling-V;if(hi<MINV)continue;a=V;b=randint(MINV,hi);c=a+b;}
+      else if(idx===2){const hi=P.ceiling-V;if(hi<MINV)continue;b=V;a=randint(MINV,hi);c=a+b;}
+      else{if(V<MINV+2)continue;c=V;a=randint(MINV,V-MINV);b=V-a;}
+    }else if(op==='-'){
+      if(idx===0){if(V<MINV+2)continue;a=V;b=randint(MINV,V-MINV);c=a-b;}
+      else if(idx===2){b=V;if(V+MINV>P.ceiling)continue;a=randint(V+MINV,P.ceiling);c=a-b;}
+      else{c=V;if(V+MINV>P.ceiling)continue;a=randint(V+MINV,P.ceiling);b=a-c;}
+    }else if(op==='*'){
+      if(idx===0){a=V;const cs=[];for(let x=MINV;x<=Math.max(P.mulOp1Max,P.mulOp2Max);x++)if(validMul(a,x,P))cs.push(x);if(!cs.length)continue;b=choice(cs);c=a*b;}
+      else if(idx===2){b=V;const cs=[];for(let x=MINV;x<=Math.max(P.mulOp1Max,P.mulOp2Max);x++)if(validMul(x,b,P))cs.push(x);if(!cs.length)continue;a=choice(cs);c=a*b;}
+      else{c=V;const ps=[];for(let x=MINV;x<=c;x++){if(c%x===0){const y=c/x;if(validMul(x,y,P))ps.push([x,y]);}}if(!ps.length)continue;const p=choice(ps);a=p[0];b=p[1];}
+    }else{
+      const top=divTop(P);
+      if(idx===0){a=V;if(a>top)continue;const cs=[];for(let bb=MINV;bb<=P.divOp2Max;bb++)if(a%bb===0&&a/bb>=MINV)cs.push(bb);if(!cs.length)continue;b=choice(cs);c=a/b;}
+      else if(idx===2){b=V;if(b>P.divOp2Max||b<MINV)continue;const cmax=Math.floor(top/b);if(cmax<MINV)continue;c=randint(MINV,cmax);a=b*c;}
+      else{c=V;const cs=[];for(let bb=MINV;bb<=P.divOp2Max;bb++)if(bb*c<=top)cs.push(bb);if(!cs.length)continue;b=choice(cs);a=b*c;}
+    }
+    if(eqOk(a,op,b,c,P))return[a,op,b,c];
+  }
+  return null;
+}
+const DIRS={H:[1,0],V:[0,1]};
+const key=(x,y)=>x+','+y;
+const inb=(x,y,N)=>x>=0&&y>=0&&x<N&&y<N;
+function segCells(sx,sy,dc,dr){const c=[];for(let i=0;i<5;i++)c.push([sx+i*dc,sy+i*dr]);return c;}
+function placeEq(grid,eqs,cells,a,op,b,c,O){
+  const nums=[[cells[0],a],[cells[2],b],[cells[4],c]];
+  for(const nb of nums){const pt=nb[0],val=nb[1],kk=key(pt[0],pt[1]);const ex=grid.get(kk);
+    if(ex&&ex.kind==='num'){ex.hv[O]=true;}
+    else{grid.set(kk,{kind:'num',val,hv:{H:O==='H',V:O==='V'}});}}
+  grid.set(key(cells[1][0],cells[1][1]),{kind:'op',val:op});
+  grid.set(key(cells[3][0],cells[3][1]),{kind:'op',val:'='});
+  eqs.push({op,a,b,c,apos:key(cells[0][0],cells[0][1]),bpos:key(cells[2][0],cells[2][1]),cpos:key(cells[4][0],cells[4][1]),ori:O});
+}
+function tryPlace(grid,eqs,P,N){
+  const B=Math.max(2,Math.round(N/6));const bcount=new Map();
+  let cx0=0,cy0=0,cn=0;
+  for(const k of grid.keys()){const pp=k.split(',');const x=+pp[0],y=+pp[1];const bk=Math.floor(x/B)+','+Math.floor(y/B);bcount.set(bk,(bcount.get(bk)||0)+1);cx0+=x;cy0+=y;cn++;}
+  cx0/=cn||1;cy0/=cn||1;
+  const bget=(x,y)=>bcount.get(Math.floor(x/B)+','+Math.floor(y/B))||0;
+  const scoreOf=(cells,ck)=>{let occ=0,far=0;for(const c of cells){const kk=key(c[0],c[1]);if(kk===ck)continue;occ+=bget(c[0],c[1]);far+=Math.abs(c[0]-cx0)+Math.abs(c[1]-cy0);}return -occ*3+far*0.25+Math.random()*0.8;};
+  function segValid(cells,crossKey){
+    for(let i=0;i<5;i++)if(!inb(cells[i][0],cells[i][1],N))return false;
+    for(let i=0;i<5;i++){const kk=key(cells[i][0],cells[i][1]);
+      if(kk===crossKey){if(i!==0&&i!==2&&i!==4)return false;continue;}
+      if(grid.has(kk))return false;
+      const nb=[[1,0],[-1,0],[0,1],[0,-1]];
+      for(const o of nb){const nx=cells[i][0]+o[0],ny=cells[i][1]+o[1];if(!inb(nx,ny,N))continue;
+        const nk=key(nx,ny);if(nk===crossKey)continue;if(grid.has(nk))return false;}}
+    return true;
+  }
+  const cands=[];
+  const numcells=[];for(const[k,v]of grid)if(v.kind==='num')numcells.push([k,v]);shuffle(numcells);
+  const scanX=Math.min(numcells.length,N>=40?160:300);
+  for(let i=0;i<scanX;i++){const ck=numcells[i][0],cv=numcells[i][1];const pp=ck.split(',');const cx=+pp[0],cy=+pp[1];
+    const freeO=[];if(!cv.hv.H)freeO.push('H');if(!cv.hv.V)freeO.push('V');
+    for(const O of freeO){const dc=DIRS[O][0],dr=DIRS[O][1];
+      for(const idx of [0,2,4]){const sx=cx-idx*dc,sy=cy-idx*dr;const cells=segCells(sx,sy,dc,dr);
+        if(!segValid(cells,ck))continue;cands.push({cells,O,ck,idx,score:scoreOf(cells,ck)});}}}
+  if(!cands.length)return false;
+  cands.sort((a,b)=>b.score-a.score);
+  const tryLimit=Math.min(cands.length,80);
+  for(let i=0;i<tryLimit;i++){const cand=cands[i];const V=grid.get(cand.ck).val;const res=completeFixed(cand.idx,V,P);
+    if(res){placeEq(grid,eqs,cand.cells,res[0],res[1],res[2],res[3],cand.O);return true;}}
+  return false;
+}
+function build(P,N,targetCells){
+  const grid=new Map(),eqs=[];
+  const O=Math.random()<0.5?'H':'V';const dc=DIRS[O][0],dr=DIRS[O][1];
+  const c=Math.floor(N/2);
+  const sx=Math.max(0,Math.min(N-1-(O==='H'?4:0),c-(O==='H'?2:0)));
+  const sy=Math.max(0,Math.min(N-1-(O==='V'?4:0),c-(O==='V'?2:0)));
+  const first=genFree(P);if(!first)return{grid,eqs};
+  placeEq(grid,eqs,segCells(sx,sy,dc,dr),first[0],first[1],first[2],first[3],O);
+  let fails=0;const failLimit=Math.max(150,N*10),cap=Math.min(1500,N*N);
+  while(grid.size<targetCells&&eqs.length<cap&&fails<failLimit){if(tryPlace(grid,eqs,P,N))fails=0;else fails++;}
+  return{grid,eqs};
+}
+function computeCell(eq,known,p){
+  const a=known.get(eq.apos),b=known.get(eq.bpos),c=known.get(eq.cpos),op=eq.op;
+  if(p===eq.apos){if(op==='+')return c-b;if(op==='-')return c+b;if(op==='*')return b===0?null:(c%b===0?c/b:null);if(op==='/')return b*c;}
+  if(p===eq.bpos){if(op==='+')return c-a;if(op==='-')return a-c;if(op==='*')return a===0?null:(c%a===0?c/a:null);if(op==='/')return c===0?null:(a%c===0?a/c:null);}
+  if(p===eq.cpos){if(op==='+')return a+b;if(op==='-')return a-b;if(op==='*')return a*b;if(op==='/')return b===0?null:(a%b===0?a/b:null);}
+  return null;
+}
+function solvable(eqs,numpos,blanks){
+  const known=new Map();for(const[k,v]of numpos)if(!blanks.has(k))known.set(k,v);
+  let unknown=blanks.size,changed=true;
+  while(changed&&unknown>0){changed=false;
+    for(const eq of eqs){const cells=[eq.apos,eq.bpos,eq.cpos];const unk=cells.filter(p=>!known.has(p));
+      if(unk.length===1){const p=unk[0],v=computeCell(eq,known,p);if(v===null)continue;known.set(p,v);unknown--;changed=true;}}}
+  return unknown===0;
+}
+function chooseBlanks(eqs,numpos,densityPct){
+  const blanks=new Set();const order=shuffle([...numpos.keys()]);
+  const target=Math.round((densityPct/100)*order.length);
+  for(const p of order){if(blanks.size>=target)break;blanks.add(p);if(!solvable(eqs,numpos,blanks))blanks.delete(p);}
+  return blanks;
+}
+function makePuzzle(P){
+  const N=P.gridSize;
+  const fill=P.fill==null?100:Math.max(0,Math.min(100,P.fill));
+  const frac=0.08+(fill/100)*(0.40-0.08);
+  const targetCells=Math.max(9,Math.round(frac*N*N));
+  let best=null,bestDist=1e9;
+  for(let attempt=0;attempt<6;attempt++){
+    const r=build(P,N,targetCells);if(r.eqs.length<2)continue;
+    const numpos=new Map();for(const[k,v]of r.grid)if(v.kind==='num')numpos.set(k,v.val);
+    const blanks=chooseBlanks(r.eqs,numpos,P.density);
+    const cand={grid:r.grid,eqs:r.eqs,numpos,blanks,N};
+    const dist=Math.abs(r.grid.size-targetCells);
+    if(!best||dist<bestDist){best=cand;bestDist=dist;}
+    if(r.grid.size>=targetCells)break;
+  }
+  return best;
+}
+function exportPuzzle(pz){
+  const N=pz.N;const cells=[];
+  for(const[k,v]of pz.grid){const p=k.split(',');const c=+p[0],r=+p[1];
+    if(v.kind==='num')cells.push({c,r,k:'num',val:v.val,blank:pz.blanks.has(k)});
+    else cells.push({c,r,k:'op',sym:v.val});}
+  return{cells,W:N,H:N,neq:pz.eqs.length,nblank:pz.blanks.size,nnum:pz.numpos.size};
+}
+const SYM={'*':'\u00d7','-':'\u2212','/':'\u00f7','=':'=','+':'+'};
+
+/* ============================ APP STATE ============================ */
+const DEFAULTS={mul:true,div:false,mulOp1Max:4,mulOp2Max:10,divOp1Max:40,divOp2Max:3,ceiling:40,gridSize:12,density:45,fill:100};
+let params={...DEFAULTS};
+let current=null;      // exported puzzle currently on screen
+const $=id=>document.getElementById(id);
+
+function loadParams(){
+  try{const s=localStorage.getItem('gdc_params');if(s){const o=JSON.parse(s);params={...DEFAULTS,...o};}}catch(e){}
+}
+function saveParams(){try{localStorage.setItem('gdc_params',JSON.stringify(params));}catch(e){}}
+
+/* ---------- board rendering ---------- */
+function fitCell(W){
+  const avail=$('boardWrap').clientWidth-16;
+  let cell=Math.floor(avail/W);
+  return Math.max(15,Math.min(56,cell));
+}
+function renderBoard(pz){
+  const board=$('board');
+  const prev={};
+  board.querySelectorAll('input').forEach(inp=>{prev[inp.dataset.pos]=inp.value;});
+  const cell=fitCell(pz.W);
+  board.style.width=(pz.W*cell)+'px';board.style.height=(pz.H*cell)+'px';
+  board.innerHTML='';
+  const fs=Math.round(cell*0.44);
+  for(const c of pz.cells){
+    const el=document.createElement(c.k==='num'&&c.blank?'div':'div');
+    el.style.left=(c.c*cell)+'px';el.style.top=(c.r*cell)+'px';
+    el.style.width=cell+'px';el.style.height=cell+'px';el.style.fontSize=fs+'px';
+    if(c.k==='op'){el.className='cell op';el.textContent=SYM[c.sym];}
+    else if(c.blank){
+      el.className='cell blank';
+      const inp=document.createElement('input');
+      inp.type='text';inp.inputMode='numeric';inp.autocomplete='off';
+      inp.dataset.answer=c.val;inp.dataset.pos=c.c+'_'+c.r;
+      inp.style.fontSize=fs+'px';inp.maxLength=String(params.ceiling).length;
+      if(prev[c.c+'_'+c.r]!==undefined)inp.value=prev[c.c+'_'+c.r];
+      inp.addEventListener('input',()=>{inp.value=inp.value.replace(/[^0-9]/g,'');el.classList.remove('ok','bad','revealed');});
+      inp.addEventListener('focus',()=>inp.select());
+      el.appendChild(inp);
+    }else{el.className='cell num';el.textContent=c.val;}
+    board.appendChild(el);
+  }
+}
+function newGrid(){
+  const pz=makePuzzle(params);
+  if(!pz){$('msg').textContent='Impossible de générer avec ces réglages.';$('msg').className='msg warn';return;}
+  current=exportPuzzle(pz);
+  $('msg').textContent='';$('msg').className='msg';
+  renderBoard(current);
+}
+
+/* ---------- check / clear / solution ---------- */
+function checkAnswers(){
+  const inputs=[...$('board').querySelectorAll('input')];
+  let filled=0,correct=0;
+  inputs.forEach(inp=>{
+    const cellEl=inp.parentElement;cellEl.classList.remove('revealed');
+    const v=inp.value.trim();
+    if(v===''){cellEl.classList.remove('ok','bad');return;}
+    filled++;
+    if(parseInt(v,10)===+inp.dataset.answer){cellEl.classList.add('ok');cellEl.classList.remove('bad');correct++;}
+    else{cellEl.classList.add('bad');cellEl.classList.remove('ok');}
+  });
+  const msg=$('msg');
+  if(filled===inputs.length&&correct===inputs.length){msg.textContent='Bravo ! Toutes les réponses sont justes. 🎉';msg.className='msg good';}
+  else if(filled===0){msg.textContent='Écris tes réponses dans les cases blanches, puis appuie sur Vérifier.';msg.className='msg';}
+  else{msg.textContent=correct+' / '+inputs.length+' justes — continue !';msg.className='msg warn';}
+}
+function clearAnswers(){
+  $('board').querySelectorAll('input').forEach(inp=>{inp.value='';inp.parentElement.classList.remove('ok','bad','revealed');});
+  $('msg').textContent='';$('msg').className='msg';
+}
+function showSolution(){
+  $('board').querySelectorAll('input').forEach(inp=>{inp.value=inp.dataset.answer;inp.parentElement.classList.remove('ok','bad');inp.parentElement.classList.add('revealed');});
+  $('msg').textContent='Solution affichée.';$('msg').className='msg';
+}
+
+/* ---------- printing ---------- */
+function printCellSize(W){return Math.max(11,Math.min(46,Math.floor(660/W)));}
+function buildPrintBoard(pz,{answers=false}={}){
+  const cell=printCellSize(pz.W);
+  const wrap=document.createElement('div');wrap.className='p-board';
+  wrap.style.width=(pz.W*cell)+'px';wrap.style.height=(pz.H*cell)+'px';
+  const fs=Math.round(cell*0.46);
+  for(const c of pz.cells){
+    const el=document.createElement('div');
+    el.style.position='absolute';el.style.left=(c.c*cell)+'px';el.style.top=(c.r*cell)+'px';
+    el.style.width=cell+'px';el.style.height=cell+'px';el.style.fontSize=fs+'px';
+    if(c.k==='op'){el.className='p-cell op';el.textContent=SYM[c.sym];}
+    else if(c.blank){el.className='p-cell blank';if(answers){el.textContent=c.val;el.classList.add('p-key');}}
+    else{el.className='p-cell num';el.textContent=c.val;}
+    wrap.appendChild(el);
+  }
+  return wrap;
+}
+function printPage(pz,title,answers){
+  const page=document.createElement('div');page.className='print-page';
+  const h=document.createElement('div');h.className='print-title';h.textContent=title;page.appendChild(h);
+  page.appendChild(buildPrintBoard(pz,{answers}));
+  return page;
+}
+function doPrint(){
+  window.print();
+  window.onafterprint=()=>{$('printArea').innerHTML='';window.onafterprint=null;};
+}
+function printCurrent(){
+  if(!current)return;
+  $('printArea').innerHTML='';
+  $('printArea').appendChild(printPage(current,'Grille de calcul',false));
+  doPrint();
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function printBatch(P){
+  let n=parseInt($('pbatchN').value,10);if(isNaN(n))n=10;n=Math.max(5,Math.min(20,n));
+  $('pbatchN').value=n;
+  const withKey=$('pbatchKey').checked;
+  const gen=$('genOverlay');$('genMsg').textContent='Génération des grilles… 0/'+n;gen.classList.add('show');
+  await sleep(30);
+  const area=$('printArea');area.innerHTML='';const puzzles=[];
+  for(let i=0;i<n;i++){
+    const pz=makePuzzle(P);
+    if(pz){const ex=exportPuzzle(pz);puzzles.push(ex);area.appendChild(printPage(ex,'Grille de calcul  —  n°'+(i+1),false));}
+    $('genMsg').textContent='Génération des grilles… '+(i+1)+'/'+n;
+    await sleep(0);
+  }
+  if(withKey){
+    for(let i=0;i<puzzles.length;i++){area.appendChild(printPage(puzzles[i],'Corrigé  —  n°'+(i+1),true));}
+  }
+  gen.classList.remove('show');
+  await sleep(30);
+  doPrint();
+}
+
+/* ---------- settings modal ---------- */
+function openModal(){
+  $('mulOn').checked=params.mul;$('divOn').checked=params.div;
+  $('mulOp1').value=params.mulOp1Max;$('mulOp2').value=params.mulOp2Max;
+  $('divOp1').value=params.divOp1Max;$('divOp2').value=params.divOp2Max;
+  $('ceiling').value=params.ceiling;$('gridSize').value=String(params.gridSize);$('density').value=params.density;$('fill').value=params.fill;
+  reflectToggles();
+  $('overlay').classList.add('show');
+}
+function closeModal(){$('overlay').classList.remove('show');}
+function reflectToggles(){
+  $('mulFields').classList.toggle('opset-disabled',!$('mulOn').checked);
+  $('divFields').classList.toggle('opset-disabled',!$('divOn').checked);
+}
+function clampInt(v,lo,hi,dflt){v=parseInt(v,10);if(isNaN(v))return dflt;return Math.max(lo,Math.min(hi,v));}
+function readForm(){
+  return {
+    mul:$('mulOn').checked,div:$('divOn').checked,
+    mulOp1Max:clampInt($('mulOp1').value,2,99,4),
+    mulOp2Max:clampInt($('mulOp2').value,2,99,10),
+    divOp1Max:clampInt($('divOp1').value,2,99,40),
+    divOp2Max:clampInt($('divOp2').value,2,20,3),
+    ceiling:clampInt($('ceiling').value,6,99,40),
+    gridSize:parseInt($('gridSize').value,10),
+    density:clampInt($('density').value,10,80,45),
+    fill:clampInt($('fill').value,0,100,100),
+  };
+}
+function saveModal(){params=readForm();saveParams();closeModal();newGrid();}
+function openPrint(){$('printOverlay').classList.add('show');}
+function closePrint(){$('printOverlay').classList.remove('show');}
+
+/* ---------- wiring ---------- */
+$('newBtn').addEventListener('click',newGrid);
+$('checkBtn').addEventListener('click',checkAnswers);
+$('clearBtn').addEventListener('click',clearAnswers);
+$('solveBtn').addEventListener('click',showSolution);
+$('setBtn').addEventListener('click',openModal);
+$('closeBtn').addEventListener('click',closeModal);
+$('cancelBtn').addEventListener('click',closeModal);
+$('saveBtn').addEventListener('click',saveModal);
+$('openPrintBtn').addEventListener('click',openPrint);
+$('printClose').addEventListener('click',closePrint);
+$('printBack').addEventListener('click',closePrint);
+$('printCurBtn').addEventListener('click',printCurrent);
+$('printBatchBtn').addEventListener('click',()=>printBatch(readForm()));
+$('printOverlay').addEventListener('click',e=>{if(e.target===$('printOverlay'))closePrint();});
+$('mulOn').addEventListener('change',reflectToggles);
+$('divOn').addEventListener('change',reflectToggles);
+$('overlay').addEventListener('click',e=>{if(e.target===$('overlay'))closeModal();});
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(current)renderBoard(current);},150);});
+
+/* ---------- init ---------- */
+loadParams();
+newGrid();
+</script>
+</body>
+</html>
