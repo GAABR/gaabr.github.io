@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#DCE2E6">
+<title>Sequences</title>
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --paper:#DCE2E6;
+  --paper-hi:#EEF2F4;
+  --tray:#37474F;
+  --tray-top:#4A616B;
+  --tray-bot:#2E3E45;
+  --slot:#FCFCFA;
+  --slot-empty:#E4E9EA;
+  --ink:#1B262C;
+  --muted:#6B7C85;
+  --line:#C3CDD3;
+  --accent:#0E7C7B;
+  --accent-hi:#13A3A0;
+
+  --box:64px;
+  --gap:8px;
+
+  --ui: ui-rounded, -apple-system, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI",
+        system-ui, "Helvetica Neue", Arial, sans-serif;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+
+body{
+  font-family:var(--ui);
+  color:var(--ink);
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--paper-hi) 0%, var(--paper) 62%);
+  -webkit-user-select:none;user-select:none;
+  touch-action:manipulation;
+  -webkit-text-size-adjust:100%;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#app{height:100%;display:flex;flex-direction:column}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+header{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px 4px;
+}
+.wordmark{
+  font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);
+}
+.gear{
+  width:40px;height:40px;border:0;border-radius:50%;
+  background:rgba(55,71,79,.07);
+  color:var(--tray);
+  display:grid;place-items:center;cursor:pointer;
+  transition:background .15s ease, transform .15s ease;
+}
+.gear:active{background:rgba(55,71,79,.16);transform:scale(.94)}
+.gear svg{width:21px;height:21px;display:block}
+
+/* ============================================================
+   STAGE + TRAY  (the signature element)
+   ============================================================ */
+#stage{
+  flex:1 1 auto;min-height:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:8px 12px;
+}
+.tray{
+  display:flex;align-items:center;gap:var(--gap);
+  padding:calc(var(--gap) + 4px);
+  border-radius:22px;
+  background:linear-gradient(180deg,var(--tray-top),var(--tray-bot));
+  box-shadow:
+    0 14px 28px -10px rgba(21,32,38,.45),
+    0 2px 0 0 rgba(255,255,255,.5),
+    inset 0 1px 0 rgba(255,255,255,.16),
+    inset 0 -2px 3px rgba(0,0,0,.22);
+  transition:opacity .16s ease;
+}
+.tray.swap{opacity:0}
+
+.slot{
+  width:var(--box);height:var(--box);flex:0 0 auto;
+  border-radius:calc(var(--box) * .17);
+  background:var(--slot);
+  display:grid;place-items:center;
+  box-shadow:
+    inset 0 2px 5px rgba(16,26,31,.20),
+    inset 0 -1px 0 rgba(255,255,255,.9);
+}
+.slot.empty{
+  background:var(--slot-empty);
+  box-shadow:inset 0 3px 7px rgba(16,26,31,.26);
+}
+.slot.empty::after{
+  content:"?";
+  font-size:calc(var(--box) * .40);
+  font-weight:800;
+  color:#9FADB4;
+}
+.slot.solved{
+  box-shadow:
+    inset 0 0 0 2px var(--accent-hi),
+    inset 0 2px 5px rgba(16,26,31,.16);
+}
+
+/* content inside a slot */
+.glyph{
+  width:calc(var(--box) * var(--scale));
+  height:calc(var(--box) * var(--scale));
+  display:block;
+}
+.glyph svg{width:100%;height:100%;display:block}
+.glyph .mask{
+  width:100%;height:100%;
+  background-color:currentColor;
+  -webkit-mask-size:contain;mask-size:contain;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  -webkit-mask-position:center;mask-position:center;
+}
+.numeral{
+  font-size:calc(var(--box) * .52);
+  font-weight:800;
+  letter-spacing:-.02em;
+  color:var(--ink);
+  line-height:1;
+}
+
+/* the one motion moment: the answer drops into its slot */
+@keyframes drop{
+  from{opacity:0;transform:translateY(-22%) scale(.72)}
+  60% {opacity:1;transform:translateY(2%)   scale(1.04)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
+}
+.slot.solved > *{animation:drop .34s cubic-bezier(.24,.9,.32,1.2) both}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+footer{
+  flex:0 0 auto;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:6px 16px 16px;
+}
+.action{
+  border:0;cursor:pointer;
+  min-width:min(340px, 76vw);
+  padding:16px 30px;
+  border-radius:999px;
+  background:var(--accent);
+  color:#fff;
+  font-family:var(--ui);
+  font-size:19px;font-weight:700;letter-spacing:.01em;
+  box-shadow:0 6px 0 -1px #0A5F5E, 0 12px 20px -8px rgba(14,124,123,.6);
+  transition:transform .12s ease, box-shadow .12s ease, background .18s ease;
+}
+.action:active{
+  transform:translateY(4px);
+  box-shadow:0 2px 0 -1px #0A5F5E, 0 6px 12px -8px rgba(14,124,123,.6);
+}
+.action.next{background:var(--tray);box-shadow:0 6px 0 -1px #223036, 0 12px 20px -8px rgba(34,48,54,.5)}
+.action.next:active{box-shadow:0 2px 0 -1px #223036, 0 6px 12px -8px rgba(34,48,54,.5)}
+
+.note{
+  font-size:12.5px;font-weight:600;color:var(--muted);
+  min-height:16px;text-align:center;
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+#scrim{
+  position:fixed;inset:0;z-index:20;
+  background:rgba(21,32,38,.42);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+#scrim.open{opacity:1;pointer-events:auto}
+
+.sheet{
+  width:100%;max-width:520px;max-height:88%;
+  background:var(--paper-hi);
+  border-radius:24px 24px 0 0;
+  padding:6px 20px calc(20px + env(safe-area-inset-bottom));
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  transform:translateY(18px);transition:transform .22s cubic-bezier(.2,.8,.3,1);
+  box-shadow:0 -8px 40px rgba(21,32,38,.3);
+}
+#scrim.open .sheet{transform:translateY(0)}
+@media (min-width:700px) and (min-height:600px){
+  #scrim{align-items:center}
+  .sheet{border-radius:24px;max-height:82%}
+}
+
+.grabber{width:38px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 4px}
+.sheet h2{font-size:19px;font-weight:800;padding:8px 0 2px}
+.sheet .sub{font-size:13px;color:var(--muted);font-weight:600;padding-bottom:8px}
+
+.field{padding:14px 0;border-top:1px solid var(--line)}
+.field > label{
+  display:block;font-size:11.5px;font-weight:700;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:9px;
+}
+.field.off{display:none}
+
+.seg{display:flex;flex-wrap:wrap;gap:7px}
+.seg button{
+  flex:1 1 auto;min-width:48px;min-height:46px;
+  padding:0 12px;border:1.5px solid var(--line);border-radius:13px;
+  background:#fff;color:var(--ink);
+  font-family:var(--ui);font-size:16px;font-weight:700;
+  cursor:pointer;transition:background .13s ease, color .13s ease, border-color .13s ease;
+}
+.seg button[aria-pressed="true"]{
+  background:var(--tray);border-color:var(--tray);color:#fff;
+}
+.seg.wide button{flex:1 1 96px}
+
+.clamp{
+  margin-top:9px;font-size:12.5px;font-weight:600;color:var(--accent);
+  display:none;
+}
+.clamp.show{display:block}
+
+.done{
+  width:100%;margin-top:18px;padding:15px;border:0;border-radius:15px;
+  background:var(--accent);color:#fff;
+  font-family:var(--ui);font-size:17px;font-weight:700;cursor:pointer;
+}
+.done:active{background:#0A5F5E}
+
+:focus-visible{outline:3px solid var(--accent-hi);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <span class="wordmark">Sequences</span>
+    <button class="gear" id="gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <main id="stage">
+    <div class="tray" id="tray" aria-live="polite"></div>
+  </main>
+
+  <footer>
+    <button class="action" id="action">Show answer</button>
+    <p class="note" id="note"></p>
+  </footer>
+</div>
+
+<div id="scrim" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="sheet" id="sheet">
+    <div class="grabber"></div>
+    <h2>Settings</h2>
+    <p class="sub">Saved on this device.</p>
+
+    <div class="field">
+      <label>Number of boxes</label>
+      <div class="seg" data-key="boxes" data-num="1">
+        <button data-val="6">6</button><button data-val="7">7</button>
+        <button data-val="8">8</button><button data-val="9">9</button>
+        <button data-val="10">10</button><button data-val="11">11</button>
+        <button data-val="12">12</button>
+      </div>
+      <p class="clamp" id="clamp"></p>
+    </div>
+
+    <div class="field">
+      <label>Kind of sequence</label>
+      <div class="seg wide" data-key="mode">
+        <button data-val="pattern">Patterns</button>
+        <button data-val="numeric">Numbers</button>
+      </div>
+    </div>
+
+    <div class="field" id="f-distinct">
+      <label>Different elements</label>
+      <div class="seg wide" data-key="distinct" data-num="1">
+        <button data-val="2">2</button><button data-val="3">3</button>
+      </div>
+    </div>
+
+    <div class="field" id="f-len">
+      <label>Elements in the repeating unit</label>
+      <div class="seg wide" data-key="patternLen" data-num="1">
+        <button data-val="2">2</button><button data-val="3">3</button><button data-val="4">4</button>
+      </div>
+    </div>
+
+    <div class="field" id="f-step">
+      <label>Step</label>
+      <div class="seg" data-key="step" data-num="1">
+        <button data-val="-2">−2</button><button data-val="-1">−1</button>
+        <button data-val="1">+1</button><button data-val="2">+2</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>What is missing</label>
+      <div class="seg wide" data-key="missing">
+        <button data-val="last">Last one</button>
+        <button data-val="one">Any 1</button>
+        <button data-val="two">Any 2</button>
+      </div>
+    </div>
+
+    <button class="done" id="done">Done</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. ARTWORK
+   ------------------------------------------------------------
+   Two entry formats are supported — mix them freely:
+
+     { id:'circle', svg:'<circle cx="50" cy="50" r="41"/>' }
+        Inline SVG drawn in a 0 0 100 100 box. Fills with the
+        current colour automatically. Crispest option.
+
+     { id:'cat', mask:'art/cat.png' }
+        Your own clipart, coloured through a CSS mask. Use black
+        artwork on a TRANSPARENT background (PNG or SVG), square
+        canvas, subject filling most of the frame. A white
+        background will colour in solid — transparency matters.
+
+   Drop your 5–15 files in and replace the list below.
+   ============================================================ */
+const SHAPES = [
+  { id:'circle',   svg:'<circle cx="50" cy="50" r="41"/>' },
+  { id:'square',   svg:'<rect x="12" y="12" width="76" height="76" rx="11"/>' },
+  { id:'triangle', svg:'<path d="M50 9 L91 85 L9 85 Z"/>' },
+  { id:'diamond',  svg:'<path d="M50 6 L88 50 L50 94 L12 50 Z"/>' },
+  { id:'hexagon',  svg:'<path d="M50 7 L88 28 L88 72 L50 93 L12 72 L12 28 Z"/>' },
+  { id:'star',     svg:'<path d="M50 8 L60.6 35.4 L89.9 37 L67.1 55.6 L74.7 84 L50 68 L25.3 84 L32.9 55.6 L10.1 37 L39.4 35.4 Z"/>' },
+  { id:'heart',    svg:'<path d="M50 88 C22 68 10 50 10 36 C10 22 20 12 32 12 C40 12 46 16 50 24 C54 16 60 12 68 12 C80 12 90 22 90 36 C90 50 78 68 50 88 Z"/>' },
+  { id:'plus',     svg:'<g><rect x="38" y="9" width="24" height="82" rx="6"/><rect x="9" y="38" width="82" height="24" rx="6"/></g>' },
+  { id:'moon',     svg:'<path d="M69.3 16.2 A40 40 0 1 0 69.3 83.8 A34 34 0 0 1 69.3 16.2 Z"/>' },
+  { id:'cloud',    svg:'<g><circle cx="33" cy="52" r="19"/><circle cx="52" cy="42" r="25"/><circle cx="72" cy="53" r="17"/><rect x="30" y="52" width="45" height="19" rx="9.5"/></g>' },
+  { id:'flower',   svg:'<g><circle cx="50" cy="26" r="19"/><circle cx="72.8" cy="42.6" r="19"/><circle cx="64.1" cy="69.4" r="19"/><circle cx="35.9" cy="69.4" r="19"/><circle cx="27.2" cy="42.6" r="19"/><circle cx="50" cy="50" r="16"/></g>' },
+  { id:'arrow',    svg:'<path d="M8 39 L52 39 L52 19 L92 50 L52 81 L52 61 L8 61 Z"/>' },
+  { id:'drop',     svg:'<path d="M50 6 C68 30 84 46 84 62 A34 34 0 1 1 16 62 C16 46 32 30 50 6 Z"/>' },
+  { id:'bolt',     svg:'<path d="M60 6 L24 55 L45 55 L38 94 L77 42 L55 42 Z"/>' }
+];
+
+const COLORS = {
+  black:'#232629', red:'#E0332C', blue:'#1F6FE5', green:'#17A34A',
+  yellow:'#EFAF00', purple:'#8B41E0', orange:'#F2760F'
+};
+
+/* fraction of the slot each size occupies */
+const SIZES = { small:0.44, medium:0.66, big:0.92 };
+
+const SHAPE_IDS = SHAPES.map(s => s.id);
+const COLOR_IDS = Object.keys(COLORS);
+const SIZE_IDS  = Object.keys(SIZES);
+const SHAPE_BY_ID = Object.fromEntries(SHAPES.map(s => [s.id, s]));
+
+/* ============================================================
+   2. SMALL HELPERS
+   ============================================================ */
+const irnd    = n => Math.floor(Math.random() * n);
+const pick    = a => a[irnd(a.length)];
+const range   = n => Array.from({length:n}, (_, i) => i);
+const shuffle = a => { const c = a.slice();
+  for (let i = c.length - 1; i > 0; i--) { const j = irnd(i + 1); [c[i], c[j]] = [c[j], c[i]]; }
+  return c; };
+const sample  = (a, k) => shuffle(a).slice(0, k);
+const sameEl  = (a, b) => a.shape === b.shape && a.color === b.color && a.size === b.size;
+
+/* ============================================================
+   3. STORAGE  (survives between sessions)
+   ------------------------------------------------------------
+   Tries the Claude artifact store, then localStorage, then memory.
+   Works both inside Claude and as a standalone hosted page.
+   ============================================================ */
+const KEY = 'sequences.settings.v1';
+const mem = {};
+const Store = {
+  async get(k){
+    try { if (window.storage) { const r = await window.storage.get(k, false); if (r) return r.value; } } catch(e){}
+    try { const v = localStorage.getItem(k); if (v !== null) return v; } catch(e){}
+    return k in mem ? mem[k] : null;
+  },
+  async set(k, v){
+    mem[k] = v;
+    try { if (window.storage) { await window.storage.set(k, v, false); return; } } catch(e){}
+    try { localStorage.setItem(k, v); } catch(e){}
+  }
+};
+
+/* ============================================================
+   4. SETTINGS
+   ============================================================ */
+const DEFAULTS = { boxes:8, mode:'pattern', distinct:2, patternLen:2, step:1, missing:'last' };
+let cfg = { ...DEFAULTS };
+
+/* Per-kind box limits. The user's chosen number is always kept;
+   these only decide how many boxes a given puzzle actually uses. */
+function boxRules(c){
+  if (c.mode === 'numeric'){
+    // Numbers stay inside 1–12, so a step of ±2 can only span 6 boxes.
+    return Math.abs(c.step) === 2 ? { min:4, max:6 } : { min:4, max:12 };
+  }
+  return { min: c.patternLen >= 4 ? 8 : 6, max:12 };
+}
+function effectiveBoxes(c){
+  const r = boxRules(c);
+  return Math.min(Math.max(c.boxes, r.min), r.max);
+}
+
+/* ============================================================
+   5. ELEMENT BUILDERS
+   ============================================================ */
+/* One dimension only: same shape + same colour, 3 sizes — or
+   same shape + same size, 3 colours — etc. (problem types a–d) */
+function elementsOneDim(k){
+  const pool = { shape:SHAPE_IDS, color:COLOR_IDS, size:SIZE_IDS };
+  const dim  = pick(Object.keys(pool).filter(d => pool[d].length >= k));
+  const base = { shape:pick(SHAPE_IDS), color:pick(COLOR_IDS), size:pick(SIZE_IDS) };
+  return sample(pool[dim], k).map(v => ({ ...base, [dim]:v }));
+}
+
+/* Free variation across shape, colour and size (types e–h) */
+function elementsAnyDim(k){
+  const out = [];
+  for (let guard = 0; out.length < k && guard < 600; guard++){
+    const e = { shape:pick(SHAPE_IDS), color:pick(COLOR_IDS), size:pick(SIZE_IDS) };
+    if (!out.some(o => sameEl(o, e))) out.push(e);
+  }
+  return out;
+}
+
+/* ============================================================
+   6. PATTERN BUILDER
+   ============================================================ */
+/* True if the unit secretly repeats something shorter —
+   ABAB is really AB, so it does not deserve "4 elements". */
+function hasShorterPeriod(p){
+  for (let d = 1; d < p.length; d++){
+    if (p.length % d) continue;
+    let ok = true;
+    for (let i = d; i < p.length; i++) if (p[i] !== p[i - d]) { ok = false; break; }
+    if (ok) return true;
+  }
+  return false;
+}
+
+function randomUnit(k, len){
+  for (let t = 0; t < 900; t++){
+    const p = Array.from({length:len}, () => irnd(k));
+    if (new Set(p).size < 2) continue;      // never AAA / BBBB
+    if (hasShorterPeriod(p)) continue;      // never a disguised shorter unit
+    return p;
+  }
+  const fb = new Array(len).fill(0); fb[len - 1] = 1; return fb;
+}
+
+/* ============================================================
+   7. NUMERIC BUILDER
+   ============================================================ */
+function numericSeries(n, step){
+  const span = Math.abs(step) * (n - 1);
+  const lo = step > 0 ? 1 : 1 + span;
+  const hi = step > 0 ? 12 - span : 12;
+  const start = lo + irnd(Math.max(1, hi - lo + 1));
+  return Array.from({length:n}, (_, i) => start + step * i);
+}
+
+/* ============================================================
+   8. CHOOSING WHAT TO HIDE
+   ------------------------------------------------------------
+   A puzzle must stay solvable. For patterns that means every
+   position of the repeating unit has to remain visible at least
+   once — otherwise nothing on screen reveals that element.
+   ============================================================ */
+function pickMissing(n, period, mode){
+  if (mode === 'last') return [n - 1];
+  const count = mode === 'two' ? 2 : 1;
+
+  if (!period){                                   // numbers
+    return shuffle(range(n)).slice(0, count).sort((a, b) => a - b);
+  }
+  const total = {};
+  for (let i = 0; i < n; i++) total[i % period] = (total[i % period] || 0) + 1;
+
+  for (let t = 0; t < 500; t++){
+    const idx = shuffle(range(n)).slice(0, count);
+    const used = {};
+    let ok = true;
+    for (const i of idx){
+      const r = i % period;
+      used[r] = (used[r] || 0) + 1;
+      if (used[r] >= total[r]) { ok = false; break; }
+    }
+    if (ok) return idx.sort((a, b) => a - b);
+  }
+  return [n - 1];
+}
+
+/* ============================================================
+   9. PUZZLE
+   ============================================================ */
+const state = { items:[], missing:[], period:0, revealed:false };
+
+function newPuzzle(){
+  const n = effectiveBoxes(cfg);
+
+  if (cfg.mode === 'numeric'){
+    state.items  = numericSeries(n, cfg.step).map(v => ({ type:'num', value:v }));
+    state.period = 0;
+  } else {
+    const len = cfg.patternLen;
+    const k   = Math.min(cfg.distinct, len);        // a 2-slot unit can't hold 3 elements
+
+    // When the unit length matches the element count, the sequence can be a
+    // plain ABAB / ABCABC cycle built along a single dimension (types a–d).
+    // A pair always is; a trio goes either way (types c/d vs g).
+    const plainCycle = (len === k) && (k === 2 || Math.random() < 0.5);
+
+    const elements = plainCycle ? elementsOneDim(k) : elementsAnyDim(k);
+    const unit     = plainCycle ? range(k)          : randomUnit(k, len);
+
+    state.items  = Array.from({length:n}, (_, i) => ({ type:'shape', el:elements[unit[i % len]] }));
+    state.period = len;
+  }
+
+  state.missing  = pickMissing(n, state.period, cfg.missing);
+  state.revealed = false;
+  render();
+  syncAction();
+}
+
+/* ============================================================
+   10. RENDER
+   ============================================================ */
+const tray   = document.getElementById('tray');
+const stage  = document.getElementById('stage');
+const action = document.getElementById('action');
+const note   = document.getElementById('note');
+
+function glyph(el){
+  const def  = SHAPE_BY_ID[el.shape];
+  const wrap = document.createElement('div');
+  wrap.className = 'glyph';
+  wrap.style.setProperty('--scale', SIZES[el.size]);
+  wrap.style.color = COLORS[el.color];
+  if (def.svg){
+    wrap.innerHTML = '<svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">' + def.svg + '</svg>';
+  } else {
+    const m = document.createElement('div');
+    m.className = 'mask';
+    m.style.webkitMaskImage = m.style.maskImage = 'url("' + def.mask + '")';
+    wrap.appendChild(m);
+  }
+  return wrap;
+}
+
+function content(item){
+  if (item.type === 'num'){
+    const s = document.createElement('span');
+    s.className = 'numeral';
+    s.textContent = item.value;
+    return s;
+  }
+  return glyph(item.el);
+}
+
+function render(){
+  tray.textContent = '';
+  state.items.forEach((item, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    if (state.missing.includes(i)){
+      if (state.revealed){ slot.classList.add('solved'); slot.appendChild(content(item)); }
+      else slot.classList.add('empty');
+    } else {
+      slot.appendChild(content(item));
+    }
+    tray.appendChild(slot);
+  });
+  layout();
+}
+
+function layout(){
+  const n = state.items.length || 6;
+  const cs = getComputedStyle(stage);
+  const w  = stage.clientWidth  - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const h  = stage.clientHeight - parseFloat(cs.paddingTop)  - parseFloat(cs.paddingBottom);
+
+  let gap = n > 9 ? 5 : n > 7 ? 7 : 9;
+  const frame = () => 2 * (gap + 4) + gap * (n - 1);     // tray padding + gaps
+  let size = Math.floor((w - frame()) / n);
+
+  if (size < 34){ gap = 4; size = Math.floor((w - frame()) / n); }
+  size = Math.max(20, Math.min(size, h - 2 * (gap + 4), 150));
+
+  document.documentElement.style.setProperty('--box', size + 'px');
+  document.documentElement.style.setProperty('--gap', gap + 'px');
+
+  const cramped = size < 50 && window.innerHeight > window.innerWidth;
+  note.textContent = cramped ? 'Turn the device sideways for bigger pictures' : '';
+}
+
+function syncAction(){
+  action.textContent = state.revealed ? 'New puzzle' : 'Show answer';
+  action.classList.toggle('next', state.revealed);
+}
+
+action.addEventListener('click', () => {
+  if (!state.revealed){
+    state.revealed = true;
+    render();
+    syncAction();
+  } else {
+    tray.classList.add('swap');
+    setTimeout(() => { newPuzzle(); tray.classList.remove('swap'); }, 150);
+  }
+});
+
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 260));
+
+/* ============================================================
+   11. SETTINGS PANEL
+   ============================================================ */
+const scrim = document.getElementById('scrim');
+const clamp = document.getElementById('clamp');
+
+function syncSettings(){
+  document.querySelectorAll('.seg').forEach(seg => {
+    const key = seg.dataset.key;
+    seg.querySelectorAll('button').forEach(b => {
+      const val = seg.dataset.num ? Number(b.dataset.val) : b.dataset.val;
+      b.setAttribute('aria-pressed', String(cfg[key] === val));
+    });
+  });
+
+  const pattern = cfg.mode === 'pattern';
+  document.getElementById('f-distinct').classList.toggle('off', !pattern);
+  document.getElementById('f-len').classList.toggle('off', !pattern);
+  document.getElementById('f-step').classList.toggle('off', pattern);
+
+  const eff = effectiveBoxes(cfg);
+  const differs = eff !== cfg.boxes;
+  clamp.classList.toggle('show', differs);
+  if (differs){
+    clamp.textContent = eff > cfg.boxes
+      ? 'This kind needs at least ' + eff + ' boxes, so it will use ' + eff + '.'
+      : 'Counting by ' + (cfg.step > 0 ? '' : '−') + Math.abs(cfg.step) +
+        ' stays within 1–12, so it will use ' + eff + ' boxes.';
+  }
+}
+
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    cfg[seg.dataset.key] = seg.dataset.num ? Number(b.dataset.val) : b.dataset.val;
+    Store.set(KEY, JSON.stringify(cfg));
+    syncSettings();
+    newPuzzle();
+  });
+});
+
+document.getElementById('gear').addEventListener('click', () => {
+  syncSettings();
+  scrim.classList.add('open');
+});
+document.getElementById('done').addEventListener('click', () => scrim.classList.remove('open'));
+scrim.addEventListener('click', e => { if (e.target === scrim) scrim.classList.remove('open'); });
+
+/* ============================================================
+   12. BOOT
+   ============================================================ */
+(async function start(){
+  try {
+    const raw = await Store.get(KEY);
+    if (raw) cfg = { ...DEFAULTS, ...JSON.parse(raw) };
+  } catch(e){}
+  syncSettings();
+  newPuzzle();
+  setTimeout(layout, 80);   // Safari settles its viewport a beat late
+})();
+</script>
+</body>
+</html>
