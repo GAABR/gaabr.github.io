@@ -1,0 +1,1 @@
+grep -E 'XKB|GTK_IM' ~/.config/labwc/environment /etc/xdg/labwc/environment /etc/default/keyboard 2>/dev/null
