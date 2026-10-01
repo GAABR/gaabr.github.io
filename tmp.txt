@@ -1,1 +1,15 @@
 grep -E 'XKB|GTK_IM' ~/.config/labwc/environment /etc/xdg/labwc/environment /etc/default/keyboard 2>/dev/null
+grep -E 'XKB|GTK_IM' ~/.config/labwc/environment /etc/xdg/labwc/environment /etc/default/keyboard 2>/dev/null
+/home/gauthier/.config/labwc/environment:XKB_DEFAULT_MODEL=pc105
+/home/gauthier/.config/labwc/environment:XKB_DEFAULT_LAYOUT=us
+/home/gauthier/.config/labwc/environment:XKB_DEFAULT_VARIANT=
+/home/gauthier/.config/labwc/environment:XKB_DEFAULT_OPTIONS=
+/etc/xdg/labwc/environment:XKB_DEFAULT_MODEL=pc105
+/etc/xdg/labwc/environment:XKB_DEFAULT_LAYOUT=us
+/etc/xdg/labwc/environment:XKB_DEFAULT_VARIANT=
+/etc/xdg/labwc/environment:XKB_DEFAULT_OPTIONS=compose:rctrl
+/etc/xdg/labwc/environment:GTK_IM_MODULE=simple
+/etc/default/keyboard:XKBMODEL="pc105"
+/etc/default/keyboard:XKBLAYOUT="us"
+/etc/default/keyboard:XKBVARIANT=""
+/etc/default/keyboard:XKBOPTIONS="compose:rctrl"
